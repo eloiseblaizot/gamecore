@@ -112,6 +112,12 @@ importers:
       '@gamecore/server':
         specifier: workspace:*
         version: link:../server
+      '@types/node':
+        specifier: ^24.19.1
+        version: 24.19.1
+      socket.io:
+        specifier: ^4.8.4
+        version: 4.8.4
       socket.io-client:
         specifier: ^4.8.4
         version: 4.8.4
