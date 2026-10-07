@@ -6,6 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
  * navigateurs — un écran d'hôte sur « PC » et des joueurs sur « téléphones » émulés.
  */
 const PORT = 4173;
+const FAKE_DISCORD_PORT = 4174;
 const CI = Boolean(process.env.CI);
 
 export default defineConfig({
@@ -24,17 +25,31 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: "pnpm --filter @gamecore/example-buzzer build && pnpm --filter @gamecore/example-buzzer start",
-    url: `http://localhost:${PORT}/healthz`,
-    reuseExistingServer: !CI,
-    timeout: 120_000,
-    env: {
-      PORT: String(PORT),
-      ALLOWED_ORIGINS: `http://localhost:${PORT}`,
-      // Tous les navigateurs de test partagent l'adresse 127.0.0.1 : on relève les limites par IP.
-      ROOMS_PER_MINUTE_PER_IP: "1000",
-      FAILED_JOINS_PER_MINUTE: "1000",
+  webServer: [
+    {
+      // Faux Discord (OAuth2 et API) : la connexion Discord se teste sans Internet.
+      command: "node e2e/fake-discord.ts",
+      url: `http://localhost:${FAKE_DISCORD_PORT}/healthz`,
+      reuseExistingServer: !CI,
+      env: { FAKE_DISCORD_PORT: String(FAKE_DISCORD_PORT) },
     },
-  },
+    {
+      command: "pnpm --filter @gamecore/example-buzzer build && pnpm --filter @gamecore/example-buzzer start",
+      url: `http://localhost:${PORT}/healthz`,
+      reuseExistingServer: !CI,
+      timeout: 120_000,
+      env: {
+        PORT: String(PORT),
+        ALLOWED_ORIGINS: `http://localhost:${PORT}`,
+        // Tous les navigateurs de test partagent l'adresse 127.0.0.1 : on relève les limites par IP.
+        ROOMS_PER_MINUTE_PER_IP: "1000",
+        FAILED_JOINS_PER_MINUTE: "1000",
+        DISCORD_CLIENT_ID: "fake-client",
+        DISCORD_CLIENT_SECRET: "fake-secret",
+        DISCORD_REDIRECT_URI: `http://localhost:${PORT}/auth/discord`,
+        DISCORD_API_BASE: `http://localhost:${FAKE_DISCORD_PORT}/api/v10`,
+        DISCORD_AUTHORIZE_URL: `http://localhost:${FAKE_DISCORD_PORT}/oauth2/authorize`,
+      },
+    },
+  ],
 });
