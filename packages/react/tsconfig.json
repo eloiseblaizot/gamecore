@@ -1,0 +1,11 @@
+{
+  // Typage (éditeur, ESLint, `pnpm typecheck`) : sources et tests, dépendances lues depuis leurs sources.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "customConditions": ["source"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}
