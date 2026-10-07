@@ -1,0 +1,25 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+*.tsbuildinfo
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Environnement : seuls les fichiers d'exemple sont versionnés
+.env*
+!.env.example
+
+# Divers
+.DS_Store
+*.log
+.partykit/
+.wrangler/
+.vercel/

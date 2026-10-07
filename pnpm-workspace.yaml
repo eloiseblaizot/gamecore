@@ -1,0 +1,4 @@
+# Espaces de travail du monorepo : les briques du moteur et les jeux d'exemple.
+packages:
+  - "packages/*"
+  - "examples/*"
