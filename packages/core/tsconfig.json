@@ -1,0 +1,13 @@
+{
+  // Configuration de typage (éditeur, ESLint, `pnpm typecheck`) : sources ET tests,
+  // les autres paquets `@gamecore/*` sont lus depuis leurs sources (condition « source »).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "customConditions": ["source"],
+    // `crypto.getRandomValues`, `structuredClone` et `Intl.Segmenter` existent partout
+    // (navigateurs, Node 22+, Cloudflare Workers) : on s'appuie sur les types DOM.
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src"]
+}
