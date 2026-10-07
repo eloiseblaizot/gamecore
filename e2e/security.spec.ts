@@ -45,6 +45,8 @@ test("aucun téléphone ne reçoit la bonne réponse ni la réponse d'un autre a
   await expect(screen.getByTestId("answered")).toHaveText("1 / 3 a répondu");
   await answer(bob, good);
   await expect(screen.getByTestId("answered")).toHaveText("2 / 3 ont répondu");
+  // Attendre que Bob ait reçu son propre état (sa réponse) avant d'analyser ses trames.
+  await expect(bob.getByTestId("answer-sent")).toBeVisible();
 
   const beforeReveal = bobFrames.join("\n");
   expect(beforeReveal).toContain('"phase":"question"');
