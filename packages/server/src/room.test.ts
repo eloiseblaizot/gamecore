@@ -424,6 +424,88 @@ describe("identités vérifiées", () => {
     ).toBe("FORBIDDEN");
   });
 
+  it("crée un salon identifié par un joueur connecté", async () => {
+    const { client } = createTestServer({ game: rps, authenticate, requireAuth: true });
+    const alice = client();
+    const welcome = await alice.request<{ code: string; kind: string }>({
+      t: "create",
+      as: "player",
+      credential: "ok:7",
+    });
+    expect(welcome.kind).toBe("player");
+    expect(alice.sync().room.members[0]).toMatchObject({
+      name: "Discord 7",
+      provider: "discord",
+      isHost: true,
+    });
+    expect(await client().expectError({ t: "create", as: "player", profile: { name: "Invité" } })).toBe(
+      "UNAUTHORIZED",
+    );
+  });
+
+  it("crée le salon à la volée quand le serveur l'autorise (Discord Activity)", async () => {
+    const createOnJoin = vi.fn(
+      (_code: string, identity: { provider: string }) => identity.provider === "discord",
+    );
+    const { client, server } = createTestServer({ game: rps, authenticate, createOnJoin });
+    const code = "ACTVTY2345XZ";
+    const first = client();
+    const [a, b] = await Promise.all([
+      first.request<{ memberId: string }>({
+        t: "join",
+        code,
+        profile: { name: "x" },
+        credential: "ok:1",
+        create: true,
+      }),
+      client().request<{ memberId: string }>({
+        t: "join",
+        code,
+        profile: { name: "x" },
+        credential: "ok:2",
+        create: true,
+      }),
+    ]);
+    expect(a.memberId).not.toBe(b.memberId);
+    expect(server.stats().rooms).toBe(1);
+    expect(
+      server
+        .getRoom(code)
+        ?.info()
+        .members.map((m) => m.name),
+    ).toEqual(["Discord 1", "Discord 2"]);
+    expect(first.sync().you.isHost).toBe(true);
+    expect(createOnJoin).toHaveBeenCalledWith(
+      code,
+      expect.objectContaining({ externalId: "1" }),
+      expect.anything(),
+    );
+  });
+
+  it("ne crée pas de salon à la volée sans autorisation ni demande explicite", async () => {
+    const { client, server } = createTestServer({
+      game: rps,
+      authenticate,
+      createOnJoin: (_code, identity) => identity.provider === "discord",
+    });
+    // Invité : refusé par createOnJoin.
+    expect(
+      await client().expectError({ t: "join", code: "AAAAAA", profile: { name: "x" }, create: true }),
+    ).toBe("NOT_FOUND");
+    // Compte Discord, mais sans `create: true` (code mal tapé) : pas de salon fantôme.
+    expect(
+      await client().expectError({ t: "join", code: "BBBBBB", profile: { name: "x" }, credential: "ok:3" }),
+    ).toBe("NOT_FOUND");
+    expect(server.stats().rooms).toBe(0);
+    // Sans option createOnJoin, le drapeau est ignoré.
+    const plain = createTestServer({ game: rps, authenticate });
+    expect(
+      await plain
+        .client()
+        .expectError({ t: "join", code: "CCCCCC", profile: { name: "x" }, credential: "ok:4", create: true }),
+    ).toBe("NOT_FOUND");
+  });
+
   it("peut exiger un compte", async () => {
     const { client, code } = await setup([], { game: rps, authenticate, requireAuth: true });
     expect(await client().expectError({ t: "join", code, profile: { name: "Invité" } })).toBe("UNAUTHORIZED");

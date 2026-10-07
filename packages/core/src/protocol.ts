@@ -91,6 +91,8 @@ export const clientMessageSchema = z.discriminatedUnion("t", [
     as: z.enum(["screen", "player"]),
     profile: profile.optional(),
     settings: settingsPatch.optional(),
+    /** Preuve d'identité du créateur-joueur (ex. jeton Discord), voir `authenticate`. */
+    credential: z.string().max(4096).optional(),
   }),
   /** Entrer dans un salon avec un pseudo (et éventuellement une preuve d'identité). */
   z.strictObject({
@@ -102,6 +104,11 @@ export const clientMessageSchema = z.discriminatedUnion("t", [
     spectator: z.boolean().optional(),
     /** Preuve d'identité vérifiée par le serveur (ex. jeton Discord), voir `authenticate`. */
     credential: z.string().max(4096).optional(),
+    /**
+     * Créer le salon s'il n'existe pas encore — seulement si le serveur l'autorise
+     * (`createOnJoin`). Sert aux Discord Activities, dont l'instance tient lieu de salon.
+     */
+    create: z.boolean().optional(),
   }),
   /** Reprendre sa place après une déconnexion ou un rechargement de page. */
   z.strictObject({

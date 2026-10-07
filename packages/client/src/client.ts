@@ -165,7 +165,12 @@ export class GameClient<G = AnyGame> {
   /** Crée un salon en tant qu'écran partagé (télé, PC) ou en tant que joueur (qui en devient l'host). */
   async create(
     as: "screen" | "player",
-    options: { profile?: { name: string; avatar?: string | null }; settings?: Partial<Settings<G>> } = {},
+    options: {
+      profile?: { name: string; avatar?: string | null };
+      settings?: Partial<Settings<G>>;
+      /** Preuve d'identité du créateur-joueur (ex. jeton Discord). */
+      credential?: string;
+    } = {},
   ): Promise<Welcome> {
     const welcome = await this.request<Welcome>({
       t: "create",
@@ -173,16 +178,21 @@ export class GameClient<G = AnyGame> {
       as,
       profile: options.profile,
       settings: options.settings,
+      credential: options.credential,
     });
     this.enter(welcome);
     return welcome;
   }
 
-  /** Rejoint un salon avec un pseudo (ou une preuve d'identité, ex. Discord). */
+  /**
+   * Rejoint un salon avec un pseudo (ou une preuve d'identité, ex. Discord).
+   * `create: true` demande au serveur de créer le salon s'il n'existe pas (s'il l'autorise,
+   * voir `createOnJoin` : cas des Discord Activities).
+   */
   async join(
     code: string,
     profile: { name: string; avatar?: string | null },
-    options: { spectator?: boolean; credential?: string } = {},
+    options: { spectator?: boolean; credential?: string; create?: boolean } = {},
   ): Promise<Welcome> {
     const welcome = await this.request<Welcome>({
       t: "join",
@@ -191,6 +201,7 @@ export class GameClient<G = AnyGame> {
       profile,
       spectator: options.spectator,
       credential: options.credential,
+      create: options.create,
     });
     this.enter(welcome);
     return welcome;

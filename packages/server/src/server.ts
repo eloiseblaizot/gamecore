@@ -39,7 +39,7 @@ import {
   type Welcome,
 } from "@gamecore/core";
 import { systemClock, type Clock } from "./clock.js";
-import type { Authenticator, Connection } from "./connection.js";
+import type { Authenticator, Connection, ConnectionMeta } from "./connection.js";
 import { consoleLogger, type Logger } from "./logger.js";
 import type { ServerModule } from "./modules/module.js";
 import { SlidingWindowCounter, TokenBucket } from "./rate-limit.js";
@@ -61,6 +61,13 @@ export interface GameServerOptions {
   authenticate?: Authenticator;
   /** Refuser les invités : une identité vérifiée est obligatoire. */
   requireAuth?: boolean;
+  /**
+   * Autorise la création d'un salon à la volée quand un client rejoint (avec `create: true`)
+   * un code qui n'existe pas encore. Sert aux Discord Activities, où l'instance de
+   * l'Activity tient lieu de salon (le premier arrivé en devient l'host). Reçoit l'identité
+   * déjà vérifiée : réserver par exemple cette possibilité aux comptes Discord.
+   */
+  createOnJoin?: (code: string, identity: Identity, meta: ConnectionMeta) => boolean | Promise<boolean>;
   /** Avatars autorisés (emojis et hôtes HTTPS), voir `sanitizeAvatar`. */
   avatarPolicy?: AvatarPolicy;
   /** Délai avant de libérer la place d'un membre déconnecté hors partie (2 min par défaut). */
@@ -100,6 +107,8 @@ export class GameServer {
   private readonly clients = new Map<string, Client>();
   private readonly rooms = new Map<string, Room>();
   private readonly disposals = new Map<string, unknown>();
+  /** Salons en cours de création à la volée (voir `createOnJoin`). */
+  private readonly creating = new Map<string, Promise<Room>>();
   private readonly failedJoins: SlidingWindowCounter;
   private readonly createdRooms: SlidingWindowCounter;
   private readonly clock: Clock;
@@ -293,8 +302,9 @@ export class GameServer {
     if (this.createdRooms.isLimited(key)) {
       throw new GameError("RATE_LIMITED", "Trop de salons créés, réessaie dans une minute.");
     }
-    // Valider le profil AVANT de créer le salon, pour ne pas laisser de salon orphelin.
-    const identity = message.as === "player" ? this.guestIdentity(message.profile) : null;
+    // Vérifier l'identité AVANT de créer le salon, pour ne pas laisser de salon orphelin.
+    const identity =
+      message.as === "player" ? await this.identify(client, message.profile, message.credential) : null;
     this.createdRooms.record(key);
     const { room, adminToken } = await this.createRoom({ settings: message.settings });
     if (identity) {
@@ -305,29 +315,36 @@ export class GameServer {
   }
 
   private async join(client: Client, message: Extract<ClientMessage, { t: "join" }>): Promise<Welcome> {
-    return this.enter(client, message.code, async (room) => {
-      let identity: Identity;
-      if (message.credential !== undefined) {
-        if (!this.options.authenticate)
-          throw new GameError("BAD_REQUEST", "Connexion par compte non prise en charge.");
-        const verified = await this.options
-          .authenticate(message.credential, client.conn.meta)
-          .catch((err: unknown) => {
-            this.logger.warn("échec de la vérification d'identité", { cause: String(err) });
-            return null;
-          });
-        if (!verified) throw new GameError("UNAUTHORIZED", "Identification refusée.");
-        identity = {
-          provider: verified.provider,
-          externalId: verified.externalId,
-          name: sanitizeDisplayName(verified.name) ?? "Joueur",
-          avatar: sanitizeAvatar(verified.avatar ?? null, this.options.avatarPolicy ?? DEFAULT_AVATAR_POLICY),
-        };
-      } else {
-        identity = this.guestIdentity(message.profile);
-      }
-      return room.join(client.conn, identity, { spectator: message.spectator });
-    });
+    this.assertNotLimited(client);
+    const identity = await this.identify(client, message.profile, message.credential);
+    const create = message.create ? (code: string) => this.createOnJoin(client, code, identity) : undefined;
+    return this.enter(
+      client,
+      message.code,
+      (room) => room.join(client.conn, identity, { spectator: message.spectator }),
+      create,
+    );
+  }
+
+  /** Crée le salon demandé à la volée si `createOnJoin` l'autorise (sinon : salon introuvable). */
+  private async createOnJoin(client: Client, code: string, identity: Identity): Promise<Room | undefined> {
+    const allowed =
+      this.options.createOnJoin && (await this.options.createOnJoin(code, identity, client.conn.meta));
+    if (!allowed) return undefined;
+    const key = this.ipKey(client);
+    if (this.createdRooms.isLimited(key)) {
+      throw new GameError("RATE_LIMITED", "Trop de salons créés, réessaie dans une minute.");
+    }
+    // Deux joueurs peuvent arriver en même temps : le second rejoint le salon du premier,
+    // y compris pendant que celui-ci est encore en cours de création.
+    const existing = this.rooms.get(code) ?? this.creating.get(code);
+    if (existing) return existing;
+    this.createdRooms.record(key);
+    const creation = this.createRoom({ code })
+      .then(({ room }) => room)
+      .finally(() => this.creating.delete(code));
+    this.creating.set(code, creation);
+    return creation;
   }
 
   /**
@@ -338,21 +355,69 @@ export class GameServer {
     client: Client,
     rawCode: string,
     fn: (room: Room) => Promise<Welcome>,
+    create?: (code: string) => Promise<Room | undefined>,
   ): Promise<Welcome> {
     const key = this.ipKey(client);
-    if (this.failedJoins.isLimited(key)) {
-      throw new GameError("RATE_LIMITED", "Trop de tentatives, réessaie dans une minute.");
-    }
-    const room = this.rooms.get(normalizeRoomCode(rawCode));
+    this.assertNotLimited(client);
+    const code = normalizeRoomCode(rawCode);
     try {
+      let room = this.rooms.get(code);
+      if (!room && create && isRoomCode(code)) room = this.rooms.get(code) ?? (await create(code));
       if (!room) throw new GameError("NOT_FOUND", "Salon introuvable, vérifie le code !");
-      return await this.bind(client, room, () => fn(room));
+      const target = room;
+      return await this.bind(client, target, () => fn(target));
     } catch (err) {
       if (err instanceof GameError && (err.code === "NOT_FOUND" || err.code === "UNAUTHORIZED")) {
         this.failedJoins.record(key);
       }
       throw err;
     }
+  }
+
+  private assertNotLimited(client: Client): void {
+    if (this.failedJoins.isLimited(this.ipKey(client))) {
+      throw new GameError("RATE_LIMITED", "Trop de tentatives, réessaie dans une minute.");
+    }
+  }
+
+  /**
+   * Identité d'un membre qui entre : vérifiée par `authenticate` s'il présente une preuve
+   * (compte Discord…), sinon invité avec le pseudo choisi (si les invités sont acceptés).
+   * Une preuve refusée compte comme une tentative ratée pour l'adresse IP.
+   */
+  private async identify(
+    client: Client,
+    profile: { name: string; avatar?: string | null } | undefined,
+    credential: string | undefined,
+  ): Promise<Identity> {
+    const avatarPolicy = this.options.avatarPolicy ?? DEFAULT_AVATAR_POLICY;
+    if (credential === undefined) {
+      if (this.options.requireAuth) throw new GameError("UNAUTHORIZED", "Connecte-toi pour jouer.");
+      const name = sanitizeDisplayName(profile?.name);
+      if (!name) throw new GameError("BAD_REQUEST", "Choisis un pseudo.");
+      return {
+        provider: "guest",
+        externalId: null,
+        name,
+        avatar: sanitizeAvatar(profile?.avatar ?? null, avatarPolicy),
+      };
+    }
+    if (!this.options.authenticate)
+      throw new GameError("BAD_REQUEST", "Connexion par compte non prise en charge.");
+    const verified = await this.options.authenticate(credential, client.conn.meta).catch((err: unknown) => {
+      this.logger.warn("échec de la vérification d'identité", { cause: String(err) });
+      return null;
+    });
+    if (!verified) {
+      this.failedJoins.record(this.ipKey(client));
+      throw new GameError("UNAUTHORIZED", "Identification refusée.");
+    }
+    return {
+      provider: verified.provider,
+      externalId: verified.externalId,
+      name: sanitizeDisplayName(verified.name) ?? "Joueur",
+      avatar: sanitizeAvatar(verified.avatar ?? null, avatarPolicy),
+    };
   }
 
   /** Attache le client à un salon (en le détachant d'un éventuel salon précédent). */
@@ -366,18 +431,6 @@ export class GameServer {
       client.room = room;
     }
     return welcome;
-  }
-
-  private guestIdentity(profile: { name: string; avatar?: string | null } | undefined): Identity {
-    if (this.options.requireAuth) throw new GameError("UNAUTHORIZED", "Connecte-toi pour jouer.");
-    const name = sanitizeDisplayName(profile?.name);
-    if (!name) throw new GameError("BAD_REQUEST", "Choisis un pseudo.");
-    return {
-      provider: "guest",
-      externalId: null,
-      name,
-      avatar: sanitizeAvatar(profile?.avatar ?? null, this.options.avatarPolicy ?? DEFAULT_AVATAR_POLICY),
-    };
   }
 
   // --- Cycle de vie des salons ---------------------------------------------------
