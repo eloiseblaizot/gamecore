@@ -25,38 +25,54 @@ const MIME: Record<string, string> = {
 /**
  * Politique de sécurité du contenu : uniquement nos propres scripts, styles et connexions
  * (les WebSockets de même origine sont couverts par 'self'), images locales ou Discord.
- * `frame-ancestors 'none'` interdit d'intégrer le jeu dans une iframe (anti-clickjacking).
+ * Par défaut, `frame-ancestors 'none'` interdit d'intégrer le jeu dans une iframe
+ * (anti-clickjacking) ; une Discord Activity a besoin de l'autoriser pour Discord seulement.
  */
-export const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "img-src 'self' data: https://cdn.discordapp.com",
-  "connect-src 'self'",
-  "font-src 'self'",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
+export function contentSecurityPolicy(frameAncestors: readonly string[] = ["'none'"]): string {
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "img-src 'self' data: https://cdn.discordapp.com",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    `frame-ancestors ${frameAncestors.join(" ")}`,
+  ].join("; ");
+}
 
-export const SECURITY_HEADERS: Record<string, string> = {
-  "Content-Security-Policy": CONTENT_SECURITY_POLICY,
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "no-referrer",
-  "Cross-Origin-Opener-Policy": "same-origin",
-  "Cross-Origin-Resource-Policy": "same-origin",
-  // Le quiz n'a besoin ni de caméra, ni de micro, ni de localisation.
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-  "X-Frame-Options": "DENY",
-};
+/** Origines de Discord autorisées à afficher le jeu dans une Activity. */
+export const DISCORD_FRAME_ANCESTORS = [
+  "https://discord.com",
+  "https://*.discord.com",
+  "https://*.discordsays.com",
+] as const;
+
+export function securityHeaders(frameAncestors?: readonly string[]): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Security-Policy": contentSecurityPolicy(frameAncestors),
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    // Le quiz n'a besoin ni de caméra, ni de micro, ni de localisation.
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  };
+  // Anciens navigateurs : X-Frame-Options, seulement quand aucune intégration n'est permise.
+  if (!frameAncestors) headers["X-Frame-Options"] = "DENY";
+  return headers;
+}
 
 /** Crée un gestionnaire HTTP qui sert `root` (application monopage : repli sur index.html). */
-export function staticHandler(root: string, options: { hsts?: boolean } = {}) {
+export function staticHandler(
+  root: string,
+  options: { hsts?: boolean; frameAncestors?: readonly string[] } = {},
+) {
   const base = resolve(root);
-  const headers = options.hsts
-    ? { ...SECURITY_HEADERS, "Strict-Transport-Security": "max-age=31536000; includeSubDomains" }
-    : SECURITY_HEADERS;
+  const headers = securityHeaders(options.frameAncestors);
+  if (options.hsts) headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
 
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     for (const [name, value] of Object.entries(headers)) res.setHeader(name, value);

@@ -140,6 +140,17 @@ select {
   box-shadow: 0 6px 0 #c48a00;
 }
 
+.btn-discord {
+  background: #5865f2;
+  box-shadow: 0 6px 0 #3c45a5;
+}
+
+.separator {
+  text-align: center;
+  color: var(--muted);
+  margin: 0;
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--muted);

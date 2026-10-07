@@ -7,6 +7,7 @@
 import { GameError } from "@gamecore/client";
 import { useGameClient } from "@gamecore/react";
 import { useEffect, useState } from "react";
+import { takePendingCredential } from "./config.js";
 import type { Buzzer } from "./game.js";
 
 export type EnterState =
@@ -26,7 +27,13 @@ export function useEnterRoom(code: string, as: "screen" | "player"): [EnterState
     (async () => {
       const resumed = await client.resume(code);
       if (resumed) return "ready" as const;
-      if (as === "player") return "needs-join" as const;
+      if (as === "player") {
+        // Retour d'une connexion Discord : on entre avec l'identité Discord vérifiée.
+        const credential = takePendingCredential();
+        if (!credential) return "needs-join" as const;
+        await client.join(code, { name: "Discord" }, { credential });
+        return "ready" as const;
+      }
       await client.watch(code);
       return "ready" as const;
     })()
@@ -56,6 +63,10 @@ export function enterErrorTitle(error: GameError): string {
       return "La partie est verrouillée";
     case "RATE_LIMITED":
       return "Trop de tentatives";
+    case "FORBIDDEN":
+      return "Accès refusé";
+    case "UNAUTHORIZED":
+      return "Identification refusée";
     default:
       return "Impossible de rejoindre";
   }

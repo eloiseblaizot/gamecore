@@ -56,6 +56,12 @@ Les limites par adresse IP protègent contre la recherche de codes par force bru
 Derrière une même box, tous les téléphones d'une soirée partagent la même adresse publique : pour un événement
 (salle, école…) où beaucoup de groupes jouent depuis le même réseau, relève ces valeurs.
 
+## Discord (facultatif)
+
+Avec `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` et `DISCORD_REDIRECT_URI`, les téléphones peuvent se connecter avec
+Discord ; avec `DISCORD_ACTIVITY=1`, le jeu peut aussi se lancer **dans** Discord, depuis un salon vocal (chaque
+participant joue dans sa fenêtre Discord, sans code). Mise en place : [docs/discord.md](../../docs/discord.md).
+
 ## Secrets
 
 Les questions et leurs réponses ([`src/questions.ts`](src/questions.ts)) ne sont lues que par le serveur : le code du

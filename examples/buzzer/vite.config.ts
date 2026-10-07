@@ -12,7 +12,10 @@ export default defineConfig({
   },
   server: {
     // En développement, Vite relaie les WebSockets vers le serveur de jeu.
-    proxy: { "/socket.io": { target: `http://localhost:${serverPort}`, ws: true } },
+    proxy: {
+      "/socket.io": { target: `http://localhost:${serverPort}`, ws: true },
+      "/api": { target: `http://localhost:${serverPort}` },
+    },
   },
   build: {
     // Pas de « source maps » publiques en production : inutile d'exposer le code commenté.

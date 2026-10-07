@@ -11,11 +11,15 @@ import { GameProvider } from "@gamecore/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
+import { API_PREFIX } from "./config.js";
 import type { Buzzer } from "./game.js";
 import "./styles.css";
 
 // Même origine que la page : en développement, Vite relaie /socket.io vers le serveur de jeu.
-const client = new GameClient<Buzzer>({ transport: socketIoTransport() });
+// Dans une Discord Activity, tout passe par le proxy de Discord (« /.proxy/ »).
+const client = new GameClient<Buzzer>({
+  transport: socketIoTransport(undefined, { path: `${API_PREFIX}/socket.io` }),
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -10,29 +10,50 @@
  *                    limites par adresse IP (10 et 12 par défaut). Attention : derrière une
  *                    même box, tous les téléphones d'une soirée partagent la même adresse.
  *   NODE_ENV         « production » pour servir dist/ (sinon Vite sert l'application)
+ *
+ * Discord (facultatif, voir docs/discord.md) :
+ *   DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   application Discord (le secret reste ici)
+ *   DISCORD_REDIRECT_URI   URL de retour de la connexion web (ex. https://monjeu.fr/auth/discord)
+ *   DISCORD_ACTIVITY       « 1 » pour autoriser l'affichage dans Discord (Activity)
+ *   DISCORD_API_BASE, DISCORD_AUTHORIZE_URL   uniquement pour les tests (faux Discord)
  */
 
+import { createDiscordTokenHandler, discordAuthenticator, toNodeHandler } from "@gamecore/discord/server";
+import { DISCORD_PROVIDER } from "@gamecore/discord";
 import { GameServer, consoleLogger, controllerModule } from "@gamecore/server";
 import { attachSocketIo, secureSocketIoOptions } from "@gamecore/server/socket-io";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 import { buzzer } from "../src/game.js";
 import { reactionSchema } from "../src/reactions.js";
-import { staticHandler } from "./http.js";
+import { DISCORD_FRAME_ANCESTORS, staticHandler } from "./http.js";
 
-const port = Number(process.env.PORT ?? 3001);
-const production = process.env.NODE_ENV === "production";
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? `http://localhost:${port},http://localhost:5173`)
+const env = process.env;
+const port = Number(env.PORT ?? 3001);
+const production = env.NODE_ENV === "production";
+const trustProxy = env.TRUST_PROXY === "1";
+const allowedOrigins = (env.ALLOWED_ORIGINS ?? `http://localhost:${port},http://localhost:5173`)
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
 
 /** Lit un entier positif dans l'environnement, avec une valeur par défaut. */
 const envInt = (name: string, fallback: number) => {
-  const value = Number(process.env[name]);
+  const value = Number(env[name]);
   return Number.isInteger(value) && value > 0 ? value : fallback;
 };
+
+/** Discord n'est activé que si l'application est entièrement configurée. */
+const discord =
+  env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET
+    ? {
+        clientId: env.DISCORD_CLIENT_ID,
+        clientSecret: env.DISCORD_CLIENT_SECRET,
+        redirectUri: env.DISCORD_REDIRECT_URI,
+        apiBase: env.DISCORD_API_BASE,
+      }
+    : null;
 
 const game = new GameServer({
   game: buzzer,
@@ -41,16 +62,37 @@ const game = new GameServer({
   limits: { failedJoinsPerMinute: envInt("FAILED_JOINS_PER_MINUTE", 12) },
   // Les téléphones peuvent envoyer des réactions (emojis) qui s'envolent sur l'écran.
   modules: [controllerModule({ schema: reactionSchema, inputsPerSecond: 3, from: "members" })],
+  ...(discord && {
+    authenticate: discordAuthenticator({ apiBase: discord.apiBase }),
+    // Discord Activity : le salon de l'instance est créé par le premier compte Discord qui arrive.
+    createOnJoin: (_code, identity) => identity.provider === DISCORD_PROVIDER,
+  }),
 });
 
 const serveApp = staticHandler(fileURLToPath(new URL("../dist", import.meta.url)), {
-  hsts: production && process.env.HSTS === "1",
+  hsts: production && env.HSTS === "1",
+  frameAncestors: env.DISCORD_ACTIVITY === "1" ? DISCORD_FRAME_ANCESTORS : undefined,
 });
 
-const http = createServer((req, res) => {
-  if (req.url === "/healthz") {
-    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify({ ok: true, ...game.stats() }));
+const discordToken = discord ? toNodeHandler(createDiscordTokenHandler(discord), { trustProxy }) : null;
+
+/** Configuration publique lue par le navigateur (jamais de secret ici). */
+const publicConfig = JSON.stringify({
+  discord: discord ? { clientId: discord.clientId, authorizeUrl: env.DISCORD_AUTHORIZE_URL } : null,
+});
+
+function sendJson(res: ServerResponse, status: number, body: string) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(body);
+}
+
+function route(req: IncomingMessage, res: ServerResponse): void {
+  const path = (req.url ?? "/").split("?")[0];
+  if (path === "/healthz") return sendJson(res, 200, JSON.stringify({ ok: true, ...game.stats() }));
+  if (path === "/api/config") return sendJson(res, 200, publicConfig);
+  if (path === "/api/discord/token") {
+    if (!discordToken) return sendJson(res, 404, JSON.stringify({ error: "Discord n'est pas configuré." }));
+    discordToken(req, res).catch(() => sendJson(res, 500, JSON.stringify({ error: "Erreur inattendue." })));
     return;
   }
   if (!production) {
@@ -59,13 +101,18 @@ const http = createServer((req, res) => {
     return;
   }
   void serveApp(req, res);
-});
+}
 
+const http = createServer(route);
 const io = new Server(http, secureSocketIoOptions({ allowedOrigins }));
-attachSocketIo(io, game, { trustProxy: process.env.TRUST_PROXY === "1" });
+attachSocketIo(io, game, { trustProxy });
 
 http.listen(port, () => {
-  consoleLogger.info(`Buzzer ! prêt sur http://localhost:${port}`, { production, allowedOrigins });
+  consoleLogger.info(`Buzzer ! prêt sur http://localhost:${port}`, {
+    production,
+    allowedOrigins,
+    discord: discord !== null,
+  });
 });
 
 // Arrêt propre : les joueurs sont prévenus, les connexions fermées.

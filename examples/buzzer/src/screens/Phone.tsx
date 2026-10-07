@@ -18,6 +18,8 @@ import {
   vibrate,
 } from "@gamecore/react";
 import { useState, type FormEvent } from "react";
+import { startDiscordLogin } from "@gamecore/discord/client";
+import { useConfig } from "../config.js";
 import type { Buzzer, Choice } from "../game.js";
 import { REACTIONS } from "../reactions.js";
 import { navigate } from "../router.js";
@@ -124,6 +126,7 @@ function JoinForm({ code, onJoined }: { code: string; onJoined: () => void }) {
         <button className="btn btn-primary btn-big" type="submit" disabled={busy || name.trim() === ""}>
           {busy ? "Connexion…" : "C'est parti !"}
         </button>
+        <DiscordLoginButton code={code} />
         {error && (
           <p className="error" role="alert">
             {error.message}
@@ -131,6 +134,33 @@ function JoinForm({ code, onJoined }: { code: string; onJoined: () => void }) {
         )}
       </form>
     </main>
+  );
+}
+
+/** Connexion avec Discord (si le serveur la propose) : pseudo et avatar Discord vérifiés. */
+function DiscordLoginButton({ code }: { code: string }) {
+  const { discord } = useConfig();
+  const [error, setError] = useState<string | null>(null);
+  if (!discord) return null;
+  const login = () =>
+    startDiscordLogin({
+      clientId: discord.clientId,
+      authorizeUrl: discord.authorizeUrl,
+      redirectUri: `${window.location.origin}/auth/discord`,
+      returnTo: `/play/${code}`,
+    }).catch(() => setError("Connexion Discord impossible."));
+  return (
+    <>
+      <p className="separator">ou</p>
+      <button type="button" className="btn btn-discord btn-big" onClick={() => void login()}>
+        Se connecter avec Discord
+      </button>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 
