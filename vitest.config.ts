@@ -18,8 +18,10 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**/*.{ts,tsx}"],
-      exclude: ["**/*.test.{ts,tsx}", "**/index.ts"],
+      exclude: ["**/*.test.{ts,tsx}", "**/index.ts", "**/__fixtures__/**"],
       reporter: ["text", "html"],
+      // Seuils minimaux : le CI échoue si la couverture régresse sous ces valeurs.
+      thresholds: { statements: 80, branches: 70, functions: 75, lines: 80 },
     },
   },
 });

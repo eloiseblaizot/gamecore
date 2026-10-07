@@ -24,6 +24,7 @@ export default {
         "repo",
         "ci",
         "deps",
+        "deps-dev",
         "docs",
         "security",
       ],
