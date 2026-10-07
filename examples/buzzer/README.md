@@ -43,12 +43,18 @@ pnpm --filter @gamecore/example-buzzer start   # http://localhost:3001
 
 ## Variables d'environnement du serveur
 
-| Variable          | Rôle                                                                   | Défaut                                        |
-| ----------------- | ---------------------------------------------------------------------- | --------------------------------------------- |
-| `PORT`            | Port d'écoute                                                          | `3001`                                        |
-| `ALLOWED_ORIGINS` | Origines autorisées à ouvrir une WebSocket (séparées par des virgules) | `http://localhost:PORT,http://localhost:5173` |
-| `TRUST_PROXY`     | `1` derrière un proxy de confiance (lecture de `X-Forwarded-For`)      | —                                             |
-| `HSTS`            | `1` pour envoyer `Strict-Transport-Security` (HTTPS uniquement)        | —                                             |
+| Variable                  | Rôle                                                                   | Défaut                                        |
+| ------------------------- | ---------------------------------------------------------------------- | --------------------------------------------- |
+| `PORT`                    | Port d'écoute                                                          | `3001`                                        |
+| `ALLOWED_ORIGINS`         | Origines autorisées à ouvrir une WebSocket (séparées par des virgules) | `http://localhost:PORT,http://localhost:5173` |
+| `TRUST_PROXY`             | `1` derrière un proxy de confiance (lecture de `X-Forwarded-For`)      | —                                             |
+| `HSTS`                    | `1` pour envoyer `Strict-Transport-Security` (HTTPS uniquement)        | —                                             |
+| `ROOMS_PER_MINUTE_PER_IP` | Salons créés par minute et par adresse IP                              | `10`                                          |
+| `FAILED_JOINS_PER_MINUTE` | Tentatives d'entrée ratées (code inconnu…) par minute et par IP        | `12`                                          |
+
+Les limites par adresse IP protègent contre la recherche de codes par force brute et la création massive de salons.
+Derrière une même box, tous les téléphones d'une soirée partagent la même adresse publique : pour un événement
+(salle, école…) où beaucoup de groupes jouent depuis le même réseau, relève ces valeurs.
 
 ## Secrets
 

@@ -6,6 +6,9 @@
  *   ALLOWED_ORIGINS  origines autorisées à ouvrir une connexion, séparées par des virgules
  *                    (par défaut : http://localhost:PORT et le serveur de dev Vite)
  *   TRUST_PROXY      « 1 » derrière un proxy de confiance (lecture de X-Forwarded-For)
+ *   ROOMS_PER_MINUTE_PER_IP, FAILED_JOINS_PER_MINUTE
+ *                    limites par adresse IP (10 et 12 par défaut). Attention : derrière une
+ *                    même box, tous les téléphones d'une soirée partagent la même adresse.
  *   NODE_ENV         « production » pour servir dist/ (sinon Vite sert l'application)
  */
 
@@ -25,9 +28,17 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? `http://localhost:${port}
   .map((o) => o.trim())
   .filter(Boolean);
 
+/** Lit un entier positif dans l'environnement, avec une valeur par défaut. */
+const envInt = (name: string, fallback: number) => {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+};
+
 const game = new GameServer({
   game: buzzer,
   logger: consoleLogger,
+  roomsPerMinutePerIp: envInt("ROOMS_PER_MINUTE_PER_IP", 10),
+  limits: { failedJoinsPerMinute: envInt("FAILED_JOINS_PER_MINUTE", 12) },
   // Les téléphones peuvent envoyer des réactions (emojis) qui s'envolent sur l'écran.
   modules: [controllerModule({ schema: reactionSchema, inputsPerSecond: 3, from: "members" })],
 });
