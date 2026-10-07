@@ -14,6 +14,14 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 - `@gamecore/react` : hooks, QR code, bouton de manette, joystick, écran allumé, vibrations.
 - Jeu d'exemple « Buzzer ! » et tests de bout en bout Playwright.
 
+## ✅ Itération 2 — Discord (octobre 2026)
+
+- `@gamecore/discord` : connexion web OAuth2 avec PKCE et `state`, route d'échange du code, vérification d'identité
+  pour `GameServer`, Discord Activity (salon dérivé de l'instance, proxy `/.proxy/`).
+- Serveur : création de salon authentifiée, création de salon à la volée contrôlée (`createOnJoin`).
+- Buzzer : bouton « Se connecter avec Discord », mode Activity, configuration publique, CSP adaptée.
+- E2E face à un faux Discord local. Voir [discord.md](discord.md).
+
 ## 🔜 Prochaines itérations
 
 ### PartyKit (Cloudflare)
@@ -23,14 +31,10 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
   minuteurs du jeu via les alarmes des Durable Objects.
 - Transport client `partysocket`. Tests d'intégration avec Miniflare, E2E du Buzzer sur PartyKit.
 
-### Discord
+### Discord (suite)
 
-- **Connexion Discord** (OAuth2 _authorization code_ + PKCE, portée `identify`) : identité vérifiée côté serveur
-  (`authenticate`), bannissement durable, pseudo et avatar Discord.
-- **Discord Activity** (Embedded App SDK) : le jeu se lance dans un salon vocal ; l'instance de l'Activity devient le
-  salon gamecore (tout le salon vocal joue ensemble, sans code) ; échange du code d'autorisation côté serveur ;
-  `frame-ancestors` et _URL mappings_ adaptés.
-- Création de salon authentifiée (`credential` dans `create`).
+- Vérification de l'appartenance à l'instance d'Activity (jeton de bot).
+- Présence riche (« En partie de Buzzer ! »), invitations depuis l'Activity.
 
 ### Reprises de DCDS
 

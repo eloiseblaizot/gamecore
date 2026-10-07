@@ -95,7 +95,7 @@ secrètes (réponses, paquets) ne sont importées côté navigateur qu'en `impor
   doivent rester assez larges (voir les variables de l'exemple) ; elles freinent la force brute sans la rendre
   impossible pour un attaquant disposant de nombreuses adresses — c'est la longueur du code qui fait l'essentiel.
 - **Invités** : un joueur expulsé peut revenir sous un autre pseudo avec une nouvelle connexion. Verrouiller le salon
-  (`lock`) ou exiger un compte (`requireAuth`, connexion Discord à venir) l'en empêche.
+  (`lock`) ou exiger un compte (`requireAuth` + connexion Discord, voir [discord.md](discord.md)) l'en empêche.
 - **Mémoire** : les salons vivent en mémoire du processus. Un redémarrage termine les parties en cours (la persistance
   arrive avec l'adaptateur PartyKit).
 - **Bluff** : rien n'empêche un joueur de montrer son écran aux autres… c'est le jeu !

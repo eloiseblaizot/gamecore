@@ -13,7 +13,7 @@ session), d'autres s'ajoutent au serveur (`modules: [...]`) ou côté interface.
 | Transport Socket.io           | `@gamecore/server/socket-io`, `@gamecore/client/socket-io` | Serveur Node classique                                       |
 | Transport local               | `@gamecore/client/local`                                   | Serveur dans la page : mode démo, tests                      |
 | Transport PartyKit            | 🔜                                                         | Cloudflare Durable Objects                                   |
-| Discord (connexion, Activity) | 🔜                                                         | Identité vérifiée, jeu lancé dans un salon vocal Discord     |
+| Discord (connexion, Activity) | `@gamecore/discord` — voir [discord.md](discord.md)        | Identité vérifiée, jeu lancé dans un salon vocal Discord     |
 | Bots, son, vidéo              | 🔜                                                         | Repris de DCDS                                               |
 
 ## Salon à code

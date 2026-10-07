@@ -6,6 +6,7 @@
 | [Architecture](architecture.md)         | Paquets, salon, flux d'un message, hasard et temps                   |
 | [Modules](modules.md)                   | Salon, écran de l'hôte, manettes, chat, transports, écrire un module |
 | [Protocole](protocole.md)               | Messages, séquences, codes d'erreur, limites                         |
+| [Discord](discord.md)                   | Connexion Discord, Discord Activity, mise en place, sécurité         |
 | [Sécurité](securite.md)                 | Modèle de menace, garde-fous, vérifications, limites connues         |
 | [Tests](tests.md)                       | Unitaires, intégration, bout en bout, couverture                     |
 | [Déploiement](deploiement.md)           | Hébergement, proxy, variables, sous-domaine                          |

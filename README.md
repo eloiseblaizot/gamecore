@@ -1,9 +1,9 @@
 # gamecore
 
 Moteur modulaire pour nos jeux web multijoueurs : **salons à code**, **écran de l'hôte**, **téléphones en manettes**,
-serveur **autoritaire** et **sécurisé**, transports interchangeables (Socket.io aujourd'hui, PartyKit et Discord
-ensuite). Né de l'expérience de [DCDS](https://github.com/eloiseblaizot/DCDS), il sert de base commune à tous les
-prochains jeux.
+serveur **autoritaire** et **sécurisé**, transports interchangeables (Socket.io aujourd'hui, PartyKit ensuite) et
+intégration **Discord** (connexion et Activity). Né de l'expérience de [DCDS](https://github.com/eloiseblaizot/DCDS),
+il sert de base commune à tous les prochains jeux.
 
 > Un jeu = quelques fonctions pures (`defineGame`). Le moteur s'occupe du reste : salons, reconnexions, secrets,
 > minuteurs, sécurité, synchronisation des écrans et des téléphones.
@@ -48,7 +48,7 @@ export const pileOuFace = defineGame({
 | Transport Socket.io (serveur Node)                                                                | `@gamecore/server/socket-io`, `@gamecore/client/socket-io` | ✅   |
 | Transport local (mode démo, tests)                                                                | `@gamecore/client/local`                                   | ✅   |
 | Transport PartyKit (Cloudflare)                                                                   | —                                                          | 🔜   |
-| Connexion Discord + Discord Activity                                                              | —                                                          | 🔜   |
+| Connexion Discord (OAuth2 PKCE) + Discord Activity                                                | `@gamecore/discord`                                        | ✅   |
 | Bots, son synthétisé, vidéo LiveKit (repris de DCDS)                                              | —                                                          | 🔜   |
 
 Détail et prochaines étapes : [feuille de route](docs/feuille-de-route.md).
@@ -72,6 +72,7 @@ ton téléphone : tu as une manette. Voir [examples/buzzer](examples/buzzer/READ
 | 🧱 [Architecture](docs/architecture.md)         | Paquets, cycle de vie d'un salon, flux d'un message            |
 | 🧩 [Modules](docs/modules.md)                   | Écran de l'hôte, manettes, chat, transports… et écrire le sien |
 | 🔌 [Protocole](docs/protocole.md)               | Messages échangés, codes d'erreur, limites                     |
+| 🎧 [Discord](docs/discord.md)                   | Connexion Discord et Discord Activity                          |
 | 🔒 [Sécurité](docs/securite.md)                 | Modèle de menace, garde-fous, limites connues                  |
 | 🧪 [Tests](docs/tests.md)                       | Unitaires, intégration, bout en bout, couverture               |
 | 🚀 [Déploiement](docs/deploiement.md)           | Mettre un jeu en ligne (Node, proxy, HTTPS)                    |
@@ -99,6 +100,7 @@ packages/
   server/    Runtime de salon autoritaire, sécurité, modules (manettes, chat), Socket.io, outils de test
   client/    Client de jeu, reprise de session, transports navigateur (Socket.io, local)
   react/     Hooks, QR code de connexion, primitives de manette
+  discord/   Connexion Discord (OAuth2 PKCE), vérification d'identité, Discord Activity
 examples/
   buzzer/    Quiz « écran de l'hôte + téléphones », exemple complet
 e2e/         Tests de bout en bout Playwright
