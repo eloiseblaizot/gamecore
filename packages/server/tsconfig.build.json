@@ -1,0 +1,13 @@
+{
+  // Build : émet `dist/` sans les tests. Les dépendances @gamecore/* sont lues depuis leur `dist/`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "composite": true,
+    "customConditions": [],
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "exclude": ["src/**/*.test.ts", "src/__fixtures__"]
+}

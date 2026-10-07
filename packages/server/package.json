@@ -1,0 +1,52 @@
+{
+  "name": "@gamecore/server",
+  "version": "0.1.0",
+  "description": "Serveur de salons autoritaire de gamecore : membres, host, reconnexion, modules, transports (Socket.io, PartyKit).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./socket-io": {
+      "source": "./src/socket-io.ts",
+      "types": "./dist/socket-io.d.ts",
+      "import": "./dist/socket-io.js"
+    },
+    "./testing": {
+      "source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@gamecore/core": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "peerDependencies": {
+    "socket.io": "^4.8.0"
+  },
+  "peerDependenciesMeta": {
+    "socket.io": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "socket.io": "^4.8.4",
+    "socket.io-client": "^4.8.4"
+  }
+}

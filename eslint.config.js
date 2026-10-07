@@ -30,6 +30,15 @@ export default defineConfig([
     },
   },
   {
+    // Tests : `expect.any()` est typé `any`, et les simulacres (vi.fn) sont des méthodes détachées.
+    files: ["**/*.test.ts", "**/*.test.tsx", "e2e/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/require-await": "off",
+    },
+  },
+  {
     // Les fichiers JavaScript de configuration ne sont pas typés.
     files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
