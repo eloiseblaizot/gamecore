@@ -9,6 +9,13 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # TypeScript 7 (compilateur natif) n'est pas encore pris en charge par typescript-eslint.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Les types de Node suivent la version de Node visée (voir .nvmrc).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
