@@ -1,0 +1,14 @@
+{
+  // Exemple : application Vite (src/) et serveur Node (server/), typés ensemble.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "customConditions": ["source"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "server", "vite.config.ts"]
+}

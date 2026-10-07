@@ -2,3 +2,9 @@
 packages:
   - "packages/*"
   - "examples/*"
+
+# Sécurité de la chaîne d'approvisionnement : aucun script d'installation n'est exécuté
+# sans accord explicite. esbuild (utilisé par tsx) fonctionne sans son script : son binaire
+# est fourni par une dépendance optionnelle propre à la plateforme.
+allowBuilds:
+  esbuild: false
