@@ -33,6 +33,13 @@ export interface Sender extends Recipient {
 
 export interface ModuleContext {
   readonly code: string;
+  /**
+   * Identifiant aléatoire et unique du salon (contrairement au code, il n'est jamais
+   * réutilisé) : à préférer pour nommer une ressource externe (salle vidéo…).
+   */
+  readonly roomId: string;
+  /** Réglages actuels de la partie (validés par le jeu). */
+  readonly settings: unknown;
   readonly status: RoomStatus;
   readonly hostId: string | null;
   readonly logger: Logger;
@@ -56,7 +63,10 @@ export interface ModuleContext {
 export interface ServerModule {
   /** Nom unique, publié aux clients dans `RoomInfo.modules`. */
   readonly name: string;
-  /** Types de messages client pris en charge (ex. `["input"]`). */
+  /**
+   * Types de messages client pris en charge (ex. `["input"]`). Avec `"module"`, le module
+   * reçoit les messages `{ t: "module", name: <son nom>, data }`.
+   */
   readonly handles?: readonly ClientMessageType[];
   /**
    * Traite un message. La valeur renvoyée est transmise au client dans l'`ack` ;

@@ -153,6 +153,8 @@ const NOT_FOUND_MESSAGE = "Salon introuvable, vérifie le code !";
 
 export class Room {
   readonly code: string;
+  /** Identifiant aléatoire, jamais réutilisé (contrairement au code). */
+  readonly id = generateToken(12);
   readonly game: AnyGame;
 
   private status_: RoomStatus = "lobby";
@@ -369,6 +371,7 @@ export class Room {
           return undefined;
         case "input":
         case "chat":
+        case "module":
           return this.dispatchToModule(att, message);
         default:
           throw new GameError("BAD_REQUEST", "Message inattendu dans un salon.");
@@ -918,7 +921,9 @@ export class Room {
   // --- Modules -----------------------------------------------------------------------
 
   private dispatchToModule(att: Attachment, message: ClientMessage): unknown {
-    const module = this.options.modules.find((m) => m.handles?.includes(message.t));
+    const module = this.options.modules.find(
+      (m) => m.handles?.includes(message.t) && (message.t !== "module" || m.name === message.name),
+    );
     if (!module?.handle) throw new GameError("MODULE_DISABLED", "Cette fonctionnalité n'est pas activée.");
     const member = att.memberId !== null ? this.members.get(att.memberId) : undefined;
     const sender: Sender = {
@@ -933,6 +938,8 @@ export class Room {
   private moduleContext(module: ServerModule): ModuleContext {
     return {
       code: this.code,
+      roomId: this.id,
+      settings: this.settings,
       status: this.status_,
       hostId: this.hostId_,
       logger: this.options.logger,

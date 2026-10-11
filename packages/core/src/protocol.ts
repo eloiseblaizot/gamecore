@@ -143,6 +143,16 @@ export const clientMessageSchema = z.discriminatedUnion("t", [
     channel: z.string().min(1).max(32).optional(),
     body: z.string().max(2000),
   }),
+  /**
+   * Message destiné à un module serveur nommé (ex. « livekit » : demander un jeton vidéo).
+   * Le module valide lui-même `data` ; un module absent répond MODULE_DISABLED.
+   */
+  z.strictObject({
+    t: z.literal("module"),
+    id: requestId.optional(),
+    name: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/),
+    data: z.unknown(),
+  }),
   /** Mesure de latence / maintien de la connexion. */
   z.strictObject({ t: z.literal("ping"), id: requestId.optional() }),
 ]);

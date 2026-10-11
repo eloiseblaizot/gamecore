@@ -286,6 +286,11 @@ export class GameClient<G = AnyGame> {
     await this.request({ t: "chat", body, channel });
   }
 
+  /** Message à un module serveur nommé (ex. `client.module("livekit", { op: "token" })`). */
+  module<T = unknown>(name: string, data: unknown): Promise<T> {
+    return this.request<T>({ t: "module", name, data });
+  }
+
   /** Mesure l'aller-retour (ms) et recale l'horloge du serveur. */
   async ping(): Promise<number> {
     const sent = Date.now();
