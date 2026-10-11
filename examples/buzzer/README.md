@@ -60,6 +60,11 @@ Les limites par adresse IP protègent contre la recherche de codes par force bru
 Derrière une même box, tous les téléphones d'une soirée partagent la même adresse publique : pour un événement
 (salle, école…) où beaucoup de groupes jouent depuis le même réseau, relève ces valeurs.
 
+## Webcams et micros (facultatif)
+
+Avec `LIVEKIT_URL`, `LIVEKIT_API_KEY` et `LIVEKIT_API_SECRET`, l'host peut activer les caméras et les micros des
+joueurs : webcams sur l'écran de l'hôte et les téléphones. Voir [docs/livekit.md](../../docs/livekit.md).
+
 ## Discord (facultatif)
 
 Avec `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` et `DISCORD_REDIRECT_URI`, les téléphones peuvent se connecter avec

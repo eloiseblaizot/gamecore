@@ -7,6 +7,7 @@
 | [Modules](modules.md)                   | Salon, écran de l'hôte, manettes, chat, transports, écrire un module |
 | [Protocole](protocole.md)               | Messages, séquences, codes d'erreur, limites                         |
 | [Son](audio.md)                         | Son synthétisé : bruitages, ambiances, sons propres au jeu           |
+| [Vidéo (LiveKit)](livekit.md)           | Webcams et micros : jetons, droits, mise en place, tests             |
 | [Discord](discord.md)                   | Connexion Discord, Discord Activity, mise en place, sécurité         |
 | [Sécurité](securite.md)                 | Modèle de menace, garde-fous, vérifications, limites connues         |
 | [Tests](tests.md)                       | Unitaires, intégration, bout en bout, couverture                     |
