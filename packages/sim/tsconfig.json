@@ -1,0 +1,15 @@
+{
+  // Configuration de typage (éditeur, ESLint, `pnpm typecheck`) : sources ET tests,
+  // les autres paquets `@gamecore/*` sont lus depuis leurs sources (condition « source »).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "customConditions": ["source"],
+    // Types DOM pour les API standard communes à tous les environnements (TextEncoder,
+    // structuredClone, performance) et pour lire les sources de @gamecore/core. Le paquet
+    // n'utilise AUCUNE API propre au DOM (vérifié par ESLint) ; les ports de Worker sont
+    // typés structurellement (la lib WebWorker entre en conflit avec DOM dans tsc).
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src"]
+}

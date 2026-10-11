@@ -30,6 +30,18 @@ export default defineConfig([
     },
   },
   {
+    // @gamecore/sim tourne aussi dans un Worker, sous Node et sous Cloudflare : aucune API
+    // propre au DOM (les horloges et l'ordonnancement sont injectés).
+    files: ["packages/sim/src/**/*.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...["window", "document", "navigator", "localStorage", "sessionStorage", "location"],
+        ...["requestAnimationFrame", "cancelAnimationFrame", "HTMLElement", "HTMLCanvasElement"],
+      ],
+    },
+  },
+  {
     // Tests : `expect.any()` est typé `any`, et les simulacres (vi.fn) sont des méthodes détachées.
     files: ["**/*.test.ts", "**/*.test.tsx", "e2e/**/*.ts"],
     rules: {

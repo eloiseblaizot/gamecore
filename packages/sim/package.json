@@ -1,0 +1,34 @@
+{
+  "name": "@gamecore/sim",
+  "version": "0.1.0",
+  "description": "Moteur de simulation continue de gamecore : tick fixe, état mutable, commandes journalisées, canaux de snapshot, Worker, sauvegarde et rejeu déterministes.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@gamecore/core": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}
