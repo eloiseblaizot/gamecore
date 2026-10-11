@@ -18,6 +18,8 @@ export default {
         "client",
         "react",
         "discord",
+        "audio",
+        "livekit",
         "partykit",
         "example",
         "e2e",
