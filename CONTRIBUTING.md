@@ -37,6 +37,7 @@ BREAKING CHANGE: description d'un changement incompatible (le cas échéant)
 | `feat`     | Nouvelle fonctionnalité                                    |
 | `fix`      | Correction de bug                                          |
 | `docs`     | Documentation seule                                        |
+| `adr`      | Décisions d'architecture (`docs/adr/`)                     |
 | `test`     | Ajout ou correction de tests                               |
 | `refactor` | Réorganisation du code sans changement de comportement     |
 | `perf`     | Amélioration de performances                               |
@@ -57,6 +58,7 @@ BREAKING CHANGE: description d'un changement incompatible (le cas échéant)
 | `discord`  | Intégration Discord (connexion, Activity)                         |
 | `audio`    | `packages/audio` : son synthétisé                                 |
 | `livekit`  | `packages/livekit` : vidéo et audio                               |
+| `sim`      | `packages/sim` : moteur de simulation continue                    |
 | `partykit` | Adaptateur PartyKit                                               |
 | `example`  | Jeux d'exemple (`examples/`)                                      |
 | `e2e`      | Tests de bout en bout (`e2e/`)                                    |
