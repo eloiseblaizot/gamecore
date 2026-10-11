@@ -167,7 +167,7 @@ export function bell(kit: Kit, t: number, midi: number, vel = 0.15, decay = 1.6)
   ratios.forEach((r, i) => {
     const g = amp(kit);
     osc(kit, "sine", f * r, t, t + decay).connect(g);
-    perc(g, t, vel * gains[i], decay / (1 + i * 0.8), 0.002);
+    perc(g, t, vel * (gains[i] ?? 0), decay / (1 + i * 0.8), 0.002);
     out(kit, g, 0.4);
   });
 }
