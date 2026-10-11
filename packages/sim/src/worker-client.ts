@@ -82,7 +82,7 @@ export interface RemoteSim<D extends AnySimulation = AnySimulation> {
   snapshot(): Promise<SimSnapshot<SimTypes<D>["full"]>>;
   hash(): Promise<string>;
   /** Sauvegarde binaire (transférée depuis le Worker, sans copie). */
-  save(): Promise<Uint8Array>;
+  save(): Promise<Uint8Array<ArrayBuffer>>;
   /** Dernière donnée reçue d'un canal (`undefined` si aucune). */
   latest(channel: ChannelName<D>): unknown;
   on<K extends keyof RemoteSimEvents<D>>(
