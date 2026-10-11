@@ -1,0 +1,51 @@
+{
+  "name": "@gamecore/audio",
+  "version": "0.1.0",
+  "description": "Son 100 % synthétisé pour gamecore : instruments Web Audio, bruitages, musique générative, réglages (repris de DCDS).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "source": "./src/react.tsx",
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./testing": {
+      "source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "happy-dom": "^20.14.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}
