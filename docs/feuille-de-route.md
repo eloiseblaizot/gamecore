@@ -37,6 +37,21 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 - Buzzer : musique et bruitages sur l'écran de l'hôte, sons discrets sur les téléphones, bouton 🔊. Voir
   [audio.md](audio.md).
 
+## ✅ Itération 5 — Vidéo et audio LiveKit (octobre 2026)
+
+- Message générique `module` et identifiant aléatoire de salon pour les modules.
+- `@gamecore/livekit` : jetons délivrés par le salon selon le rôle et une politique du jeu, fournisseur React, tuiles
+  par membre, détection de parole (atténuation de la musique), webcam locale pour la démo.
+- Buzzer : réglages caméras / micros, webcams sur l'écran et les téléphones, CSP limitée au serveur LiveKit.
+- E2E avec la fausse caméra de Chromium, et avec un vrai serveur LiveKit en CI. Voir [livekit.md](livekit.md).
+
+## ✅ Itération 6 — Rich Presence Discord (octobre 2026)
+
+- `@gamecore/discord` : présence (détails, état, temps, groupe, images) au format Discord, mises à jour regroupées
+  selon le rythme imposé par Discord, hook `useDiscordPresence`, invitations depuis l'Activity.
+- Buzzer : présence calculée par une fonction pure (information publique uniquement), bouton « Inviter des amis ».
+  Voir [discord.md](discord.md#rich-presence-et-invitations-activity).
+
 ## 🔜 Prochaines itérations
 
 ### PartyKit (Cloudflare)
@@ -49,12 +64,9 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 ### Discord (suite)
 
 - Vérification de l'appartenance à l'instance d'Activity (jeton de bot).
-- Présence riche (« En partie de Buzzer ! »), invitations depuis l'Activity.
 
 ### Reprises de DCDS
 
-- **Vidéo et audio** (LiveKit) : jetons délivrés par le serveur aux seuls membres, publication selon le rôle et les
-  réglages de l'host.
 - **Portage de DCDS** sur gamecore.
 
 ### Outillage

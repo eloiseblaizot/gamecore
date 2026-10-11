@@ -123,6 +123,44 @@ if (isDiscordActivity()) {
 Dans le Buzzer, une Activity affiche l'interface « téléphone » à chaque participant (question, réponses, résultats) :
 voir [`DiscordActivity.tsx`](../examples/buzzer/src/screens/DiscordActivity.tsx).
 
+## Rich Presence et invitations (Activity)
+
+Pendant que le joueur est dans l'Activity, Discord peut afficher sous son nom où il en est : « Buzzer ! — Question 3 /
+5 — 1 200 points », avec le temps restant et la taille du groupe.
+
+```tsx
+import { inviteToActivity } from "@gamecore/discord/client";
+import { useDiscordPresence } from "@gamecore/discord/react";
+
+function Presence({ session }: { session: DiscordActivitySession }) {
+  useDiscordPresence(session.sdk, {
+    details: "Question 3 / 5",
+    state: "1 200 points",
+    endsAt: deadline, // Discord affiche le temps restant (startedAt : le temps écoulé)
+    party: { id: room.code, size: 3, max: 12 },
+    largeImage: "buzzer", // clé d'un « Rich Presence Asset » téléversé dans le portail développeur
+    largeText: "Buzzer !",
+  });
+  return <button onClick={() => void inviteToActivity(session)}>Inviter des amis</button>;
+}
+```
+
+- Les mises à jour sont **regroupées** (au plus une toutes les 4 s, rythme imposé par Discord) ; une présence identique
+  n'est pas renvoyée ; elle est effacée quand le composant disparaît.
+- Les textes sont nettoyés et bornés à 128 caractères ; les images se limitent aux clés d'assets et aux URL `https`.
+- Portée OAuth `rpc.activities.write` : demandée par défaut par `startDiscordActivity`. Si Discord la refuse, le jeu
+  continue sans présence.
+- `inviteToActivity` ouvre la fenêtre d'invitation de Discord (indisponible en message privé ou sans le droit
+  d'inviter : renvoie alors `false`).
+- **Limite** : la Rich Presence n'existe que DANS une Activity (le SDK parle au client Discord). Un site web ne peut pas
+  modifier la présence d'un joueur.
+- **Confidentialité** : la présence est visible par les amis du joueur. Elle ne doit contenir que de l'information
+  publique du jeu. Celle du Buzzer est calculée par une fonction pure testée
+  ([`presence.ts`](../examples/buzzer/src/presence.ts)) : salon d'attente, numéro de question, score, rang final.
+
+Dans le portail développeur, téléverse l'image du jeu dans **Rich Presence → Art Assets** sous la clé utilisée
+(`buzzer` pour l'exemple).
+
 ## Sécurité
 
 - **Secret** : seul le serveur le connaît ; la route d'échange ne renvoie que le jeton d'accès (jamais le jeton de
