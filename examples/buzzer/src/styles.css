@@ -943,6 +943,13 @@ select {
   color: var(--muted);
 }
 
+.invite-button {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  z-index: 20;
+}
+
 /* --- Mode démo ------------------------------------------------------------- */
 
 .demo {

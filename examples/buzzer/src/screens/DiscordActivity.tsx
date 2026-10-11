@@ -8,21 +8,27 @@
 
 import { GameError } from "@gamecore/client";
 import { discordDisplayName } from "@gamecore/discord";
-import { startDiscordActivity } from "@gamecore/discord/client";
-import { useGameClient } from "@gamecore/react";
+import {
+  inviteToActivity,
+  startDiscordActivity,
+  type DiscordActivitySession,
+} from "@gamecore/discord/client";
+import { useDiscordPresence } from "@gamecore/discord/react";
+import { useGame, useGameClient, useMe, useRoom } from "@gamecore/react";
 import { useEffect, useState } from "react";
 import { API_PREFIX, useConfig } from "../config.js";
 import type { Buzzer } from "../game.js";
+import { buzzerPresence } from "../presence.js";
 import { Notice } from "../ui/Notice.js";
 import { Phone } from "./Phone.js";
 
 /** L'initialisation n'a lieu qu'une fois par chargement (le SDK n'aime pas être lancé deux fois). */
-let starting: Promise<string> | null = null;
+let starting: Promise<DiscordActivitySession> | null = null;
 
 export function DiscordActivity() {
   const config = useConfig();
   const client = useGameClient<Buzzer>();
-  const [state, setState] = useState<{ code: string } | { error: string } | null>(null);
+  const [state, setState] = useState<{ session: DiscordActivitySession } | { error: string } | null>(null);
 
   useEffect(() => {
     if (!config.discord) return;
@@ -34,11 +40,11 @@ export function DiscordActivity() {
           { name: discordDisplayName(session.user) },
           { credential: session.accessToken, create: true },
         );
-        return session.roomCode;
+        return session;
       },
     );
     starting
-      .then((code) => setState({ code }))
+      .then((session) => setState({ session }))
       .catch((err: unknown) => {
         starting = null;
         setState({
@@ -57,5 +63,22 @@ export function DiscordActivity() {
       </main>
     );
   }
-  return <Phone code={state.code} />;
+  return (
+    <>
+      <ActivityPresence session={state.session} />
+      <Phone code={state.session.roomCode} />
+      <button className="btn btn-ghost invite-button" onClick={() => void inviteToActivity(state.session)}>
+        ✉️ Inviter des amis
+      </button>
+    </>
+  );
+}
+
+/** Rich Presence : Discord affiche où en est le joueur (question, score, rang). */
+function ActivityPresence({ session }: { session: DiscordActivitySession }) {
+  const room = useRoom<Buzzer>();
+  const game = useGame<Buzzer>();
+  const me = useMe();
+  useDiscordPresence(session.sdk, buzzerPresence(room, game?.public ?? null, me));
+  return null;
 }
