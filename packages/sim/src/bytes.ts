@@ -31,7 +31,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 export class ByteWriter {
-  private buffer: Uint8Array;
+  private buffer: Uint8Array<ArrayBuffer>;
   private view: DataView;
   private offset = 0;
 
@@ -119,7 +119,7 @@ export class ByteWriter {
   }
 
   /** Copie exacte des octets écrits. */
-  finish(): Uint8Array {
+  finish(): Uint8Array<ArrayBuffer> {
     return this.buffer.slice(0, this.offset);
   }
 }

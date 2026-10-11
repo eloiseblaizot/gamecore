@@ -23,6 +23,15 @@ export {
   type ValidateContext,
 } from "./definition.js";
 export { fnv1a64, hashState } from "./hash.js";
+export { localPort, type LocalPortOptions } from "./local-port.js";
+export {
+  hostMessageSchema,
+  workerMessageSchema,
+  type HostMessage,
+  type SimControl,
+  type SimPort,
+  type WorkerMessage,
+} from "./protocol.js";
 export { replay, type ReplayInput } from "./replay.js";
 export { createRunner, type Runner, type RunnerOptions, type RunnerStats } from "./runner.js";
 export type { DecodeSaveOptions, SimSave } from "./save.js";

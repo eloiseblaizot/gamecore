@@ -70,7 +70,10 @@ const scheduledSchema = z.array(z.tuple([z.string().min(1).max(64), u32.min(1), 
 const bad = (message: string) => new GameError("BAD_REQUEST", message);
 
 /** Écrit une sauvegarde. */
-export function writeSave<D extends AnySimulation>(definition: D, save: SimSaveInput<D>): Uint8Array {
+export function writeSave<D extends AnySimulation>(
+  definition: D,
+  save: SimSaveInput<D>,
+): Uint8Array<ArrayBuffer> {
   const body = definition.codec.encode(save.state);
   if (!(body instanceof Uint8Array)) throw new TypeError("codec.encode doit renvoyer un Uint8Array.");
   const w = new ByteWriter(body.length + 1024);

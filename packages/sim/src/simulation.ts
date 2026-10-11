@@ -134,7 +134,7 @@ export interface Sim<D extends AnySimulation = AnySimulation> {
    * Sauvegarde prise lors de la dernière compaction du journal (`null` s'il n'y en a pas eu) :
    * point de départ du rejeu du journal courant.
    */
-  readonly journalBase: Uint8Array | null;
+  readonly journalBase: Uint8Array<ArrayBuffer> | null;
   /** `null`, ou la cause de la corruption (la simulation est alors en lecture seule). */
   readonly corrupted: CorruptionInfo | null;
   /** Met une commande en file (appliquée au début du prochain tick). */
@@ -148,7 +148,7 @@ export interface Sim<D extends AnySimulation = AnySimulation> {
   /** Hash de la simulation : tick, RNG, état, commandes programmées. */
   hash(): string;
   /** Sauvegarde binaire (format GCSIM) : état, RNG, réglages, graine, journal, commandes programmées. */
-  save(): Uint8Array;
+  save(): Uint8Array<ArrayBuffer>;
   /** Temps mesurés (copie). */
   profile(): SimProfile;
   /** Commandes système programmées, dans l'ordre d'exécution à échéance égale (copie). */
@@ -198,7 +198,7 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
   state!: SimTypes<D>["state"];
   journal: JournalEntry<SimTypes<D>["command"]>[] = [];
   journalFrom = 0;
-  journalBase: Uint8Array | null = null;
+  journalBase: Uint8Array<ArrayBuffer> | null = null;
   corrupted: CorruptionInfo | null = null;
 
   /** Ticks terminés. */
@@ -364,7 +364,7 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
     ]);
   }
 
-  save(): Uint8Array {
+  save(): Uint8Array<ArrayBuffer> {
     if (this.corrupted) throw new GameError("INTERNAL", "Simulation corrompue : sauvegarde refusée.");
     return writeSave(this.definition, this.saveInput());
   }
@@ -702,7 +702,7 @@ export function decodeSave<D extends AnySimulation>(
 }
 
 /** Sauvegarde une simulation (équivaut à `sim.save()`). */
-export function encodeSave(sim: Sim): Uint8Array {
+export function encodeSave(sim: Sim): Uint8Array<ArrayBuffer> {
   return sim.save();
 }
 
