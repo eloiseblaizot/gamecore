@@ -72,6 +72,7 @@ ton téléphone : tu as une manette. Voir [examples/buzzer](examples/buzzer/READ
 | 🧱 [Architecture](docs/architecture.md)         | Paquets, cycle de vie d'un salon, flux d'un message            |
 | 🧩 [Modules](docs/modules.md)                   | Écran de l'hôte, manettes, chat, transports… et écrire le sien |
 | 🔌 [Protocole](docs/protocole.md)               | Messages échangés, codes d'erreur, limites                     |
+| 🔊 [Son](docs/audio.md)                         | Son synthétisé : bruitages, musique, réglages                  |
 | 🎧 [Discord](docs/discord.md)                   | Connexion Discord et Discord Activity                          |
 | 🔒 [Sécurité](docs/securite.md)                 | Modèle de menace, garde-fous, limites connues                  |
 | 🧪 [Tests](docs/tests.md)                       | Unitaires, intégration, bout en bout, couverture               |
@@ -100,6 +101,7 @@ packages/
   server/    Runtime de salon autoritaire, sécurité, modules (manettes, chat), Socket.io, outils de test
   client/    Client de jeu, reprise de session, transports navigateur (Socket.io, local)
   react/     Hooks, QR code de connexion, primitives de manette
+  audio/     Son synthétisé (Web Audio) : instruments, bruitages, musique, réglages
   discord/   Connexion Discord (OAuth2 PKCE), vérification d'identité, Discord Activity
 examples/
   buzzer/    Quiz « écran de l'hôte + téléphones », exemple complet

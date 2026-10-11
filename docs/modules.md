@@ -15,7 +15,8 @@ session), d'autres s'ajoutent au serveur (`modules: [...]`) ou côté interface.
 | Transport PartyKit            | 🔜                                                         | Cloudflare Durable Objects                                   |
 | Discord (connexion, Activity) | `@gamecore/discord` — voir [discord.md](discord.md)        | Identité vérifiée, jeu lancé dans un salon vocal Discord     |
 | Bots et mode démo             | stratégie `bots` du jeu + `createDemoRoom`                 | Joueurs gérés par le serveur ; partie complète dans la page  |
-| Son, vidéo                    | 🔜                                                         | Repris de DCDS                                               |
+| Son synthétisé                | `@gamecore/audio` — voir [audio.md](audio.md)              | Bruitages, musique, réglages, sans fichier audio             |
+| Vidéo et audio (LiveKit)      | 🔜                                                         | Repris de DCDS                                               |
 
 ## Salon à code
 

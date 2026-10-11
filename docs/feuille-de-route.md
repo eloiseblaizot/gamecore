@@ -30,6 +30,13 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 - Buzzer : bots qui « connaissent » la réponse 6 fois sur 10, page `/demo` (écran et téléphone côte à côte, aucune
   connexion réseau), bouton « Ajouter un bot » en ligne, banque de questions distincte pour la démo.
 
+## ✅ Itération 4 — Son synthétisé (octobre 2026)
+
+- `@gamecore/audio` : instruments Web Audio, 28 bruitages génériques, 5 ambiances, moteur configurable (sons propres
+  au jeu, réglages mémorisés, autoplay respecté, atténuation), liaisons React, faux contexte audio pour les tests.
+- Buzzer : musique et bruitages sur l'écran de l'hôte, sons discrets sur les téléphones, bouton 🔊. Voir
+  [audio.md](audio.md).
+
 ## 🔜 Prochaines itérations
 
 ### PartyKit (Cloudflare)
@@ -46,8 +53,6 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 
 ### Reprises de DCDS
 
-- **Son** : moteur Web Audio synthétisé (aucun fichier, libre de droits pour les streams), ambiances, bruitages,
-  atténuation quand quelqu'un parle, réglages mémorisés.
 - **Vidéo et audio** (LiveKit) : jetons délivrés par le serveur aux seuls membres, publication selon le rôle et les
   réglages de l'host.
 - **Portage de DCDS** sur gamecore.
