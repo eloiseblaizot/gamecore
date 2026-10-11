@@ -25,7 +25,7 @@ import { attachSocketIo, secureSocketIoOptions } from "@gamecore/server/socket-i
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
-import { buzzer } from "../src/game.js";
+import { buzzer } from "../src/online.js";
 import { reactionSchema } from "../src/reactions.js";
 import { DISCORD_FRAME_ANCESTORS, staticHandler } from "./http.js";
 

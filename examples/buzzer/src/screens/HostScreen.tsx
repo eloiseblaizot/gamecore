@@ -3,7 +3,7 @@
  * Il n'affiche que la vue PUBLIQUE de la partie : aucune réponse avant la révélation.
  */
 
-import type { MemberInfo } from "@gamecore/core";
+import { isBot, type MemberInfo } from "@gamecore/core";
 import {
   JoinQrCode,
   joinUrl,
@@ -24,7 +24,8 @@ import { Countdown } from "../ui/Countdown.js";
 import { ConnectionBanner, Notice } from "../ui/Notice.js";
 import { enterErrorTitle, useEnterRoom } from "../useEnterRoom.js";
 
-export function HostScreen({ code }: { code: string }) {
+/** `demo` : partie locale contre des bots (pas de QR code : personne ne peut la rejoindre). */
+export function HostScreen({ code, demo = false }: { code: string; demo?: boolean }) {
   const [enter] = useEnterRoom(code, "screen");
   const status = useConnectionStatus();
   const room = useRoom<Buzzer>();
@@ -45,14 +46,14 @@ export function HostScreen({ code }: { code: string }) {
     <main className="page screen">
       <ConnectionBanner status={status} />
       <Reactions />
-      {room.status === "lobby" ? <Lobby /> : <Stage />}
+      {room.status === "lobby" ? <Lobby demo={demo} /> : <Stage />}
     </main>
   );
 }
 
 // --- Salon d'attente -------------------------------------------------------------
 
-function Lobby() {
+function Lobby({ demo }: { demo: boolean }) {
   const client = useGameClient<Buzzer>();
   const room = useRoom<Buzzer>()!;
   const isHost = useIsHost();
@@ -66,24 +67,33 @@ function Lobby() {
 
   return (
     <div className="lobby">
-      <section className="lobby-join" aria-label="Rejoindre la partie">
-        <h1 className="logo logo-small">
-          Buzzer<span>!</span>
-        </h1>
-        <p className="lobby-hint">Scanne le QR code ou va sur</p>
-        <p className="lobby-url">{url.replace(/\/play\/.*/, "")}</p>
-        <div className="qr">
-          <JoinQrCode url={url} size={220} foreground="#1b1035" background="#ffffff" />
-        </div>
-        <p className="lobby-hint">Code de la partie</p>
-        <p
-          className="room-code"
-          data-testid="room-code"
-          aria-label={`Code de la partie : ${room.code.split("").join(" ")}`}
-        >
-          {room.code}
-        </p>
-      </section>
+      {demo ? (
+        <section className="lobby-join" aria-label="Mode démo">
+          <h1 className="logo logo-small">
+            Buzzer<span>!</span>
+          </h1>
+          <p className="lobby-hint">Démo : tu joues contre des bots, depuis le téléphone à droite.</p>
+        </section>
+      ) : (
+        <section className="lobby-join" aria-label="Rejoindre la partie">
+          <h1 className="logo logo-small">
+            Buzzer<span>!</span>
+          </h1>
+          <p className="lobby-hint">Scanne le QR code ou va sur</p>
+          <p className="lobby-url">{url.replace(/\/play\/.*/, "")}</p>
+          <div className="qr">
+            <JoinQrCode url={url} size={220} foreground="#1b1035" background="#ffffff" />
+          </div>
+          <p className="lobby-hint">Code de la partie</p>
+          <p
+            className="room-code"
+            data-testid="room-code"
+            aria-label={`Code de la partie : ${room.code.split("").join(" ")}`}
+          >
+            {room.code}
+          </p>
+        </section>
+      )}
 
       <section className="lobby-players" aria-labelledby="players-title">
         <h2 id="players-title">
@@ -107,6 +117,9 @@ function Lobby() {
         {isHost && (
           <div className="host-controls">
             <Settings settings={room.settings} onChange={(s) => run(() => client.lobby.settings(s))} />
+            <button className="btn btn-secondary" onClick={() => run(() => client.lobby.addBot())}>
+              🤖 Ajouter un bot
+            </button>
             <button
               className="btn btn-primary btn-big"
               disabled={players.length < room.game.minPlayers}
@@ -140,6 +153,7 @@ function PlayerChip({
       <Avatar name={member.name} avatar={member.avatar} />
       <span className="player-name">{member.name}</span>
       {member.isHost && <span className="badge">host</span>}
+      {isBot(member) && <span className="badge badge-bot">bot</span>}
       {canKick && (
         <button className="chip-kick" onClick={onKick} aria-label={`Retirer ${member.name}`}>
           ✕

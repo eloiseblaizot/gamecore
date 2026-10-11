@@ -804,6 +804,68 @@ select {
   max-width: 420px;
 }
 
+/* --- Mode démo ------------------------------------------------------------- */
+
+.demo {
+  display: grid;
+  grid-template-columns: 1fr 390px;
+  grid-template-rows: auto 1fr;
+  min-height: 100dvh;
+  gap: 0 16px;
+}
+
+.demo-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.demo-bar p {
+  margin: 0;
+}
+
+.demo-screen {
+  overflow: auto;
+}
+
+/* Le téléphone de la démo est dessiné comme un vrai téléphone. */
+.demo-phone {
+  position: relative;
+  margin: 16px 16px 16px 0;
+  border: 10px solid #0d0820;
+  border-radius: 36px;
+  overflow: hidden auto;
+  transform: translateZ(0); /* contient les éléments en position fixe (barre de réactions) */
+  max-height: calc(100dvh - 80px);
+}
+
+.demo-phone .page,
+.demo-screen .page {
+  min-height: 100%;
+}
+
+.badge-bot {
+  background: #8ecae6;
+}
+
+.btn-demo {
+  font-size: 1.05rem;
+}
+
+@media (max-width: 900px) {
+  .demo {
+    grid-template-columns: 1fr;
+  }
+  .demo-phone {
+    margin: 16px;
+    min-height: 640px;
+  }
+}
+
 /* --- Animations (désactivées si l'utilisateur préfère réduire les animations) --- */
 
 @keyframes pop {

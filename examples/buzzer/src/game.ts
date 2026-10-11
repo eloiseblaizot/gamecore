@@ -10,11 +10,16 @@
  *   - la bonne réponse : absente de la vue publique tant que la question est ouverte ;
  *   - la réponse de chaque joueur : seul le joueur la voit (vue privée) ; les autres
  *     savent seulement QUI a répondu, pas QUOI.
+ *
+ * Les règles sont une fabrique (`createBuzzer(questions)`) : le serveur les instancie avec
+ * la banque de questions en ligne (`online.ts`), le mode démo avec sa propre banque. Ainsi
+ * le JavaScript de la démo, téléchargeable par tous, ne contient jamais les réponses du
+ * mode en ligne.
  */
 
 import { defineGame } from "@gamecore/core";
 import { z } from "zod";
-import { QUESTIONS, type Question } from "./questions.js";
+import type { Question } from "./questions.js";
 
 export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 12;
@@ -48,13 +53,19 @@ export interface BuzzerState {
   players: { id: string; name: string; avatar: string | null }[];
 }
 
-export const settingsSchema = z.strictObject({
-  /** Nombre de questions de la partie. */
-  questions: z.number().int().min(1).max(QUESTIONS.length),
-  /** Secondes pour répondre. */
-  seconds: z.number().int().min(5).max(60),
-});
-export type BuzzerSettings = z.infer<typeof settingsSchema>;
+/** Réglages, bornés par la taille de la banque de questions. */
+export function settingsSchemaFor(questionCount: number) {
+  return z.strictObject({
+    /** Nombre de questions de la partie. */
+    questions: z.number().int().min(1).max(questionCount),
+    /** Secondes pour répondre. */
+    seconds: z.number().int().min(5).max(60),
+  });
+}
+export type BuzzerSettings = z.infer<ReturnType<typeof settingsSchemaFor>>;
+
+/** Probabilité qu'un bot « connaisse » la bonne réponse (sinon il répond au hasard). */
+export const BOT_SKILL = 0.6;
 
 export const actionSchema = z.discriminatedUnion("type", [
   /** Un joueur répond. */
@@ -133,117 +144,142 @@ function ranking(s: BuzzerState): BuzzerPublic["ranking"] {
   return sorted.map((p) => ({ ...p, rank: sorted.findIndex((q) => q.score === p.score) + 1 }));
 }
 
-export const buzzer = defineGame({
-  id: "buzzer",
-  name: "Buzzer !",
-  minPlayers: MIN_PLAYERS,
-  maxPlayers: MAX_PLAYERS,
-  settings: { schema: settingsSchema, defaults: { questions: 5, seconds: 15 } },
-  actions: actionSchema,
-  systemActions: systemActionSchema,
+export const createBuzzer = (bank: readonly Question[]) =>
+  defineGame({
+    id: "buzzer",
+    name: "Buzzer !",
+    minPlayers: MIN_PLAYERS,
+    maxPlayers: MAX_PLAYERS,
+    settings: {
+      schema: settingsSchemaFor(bank.length),
+      defaults: { questions: Math.min(5, bank.length), seconds: 15 },
+    },
+    actions: actionSchema,
+    systemActions: systemActionSchema,
 
-  setup(ctx): BuzzerState {
-    const duration = ctx.settings.seconds * 1000;
-    ctx.schedule("timer", duration, { type: "timeout", index: 0 });
-    return {
-      phase: "question",
-      questions: ctx.random.shuffle(QUESTIONS).slice(0, ctx.settings.questions),
-      index: 0,
-      startedAt: ctx.now,
-      deadline: ctx.now + duration,
-      answers: {},
-      gained: {},
-      scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])),
-      players: ctx.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar })),
-    };
-  },
+    setup(ctx): BuzzerState {
+      const duration = ctx.settings.seconds * 1000;
+      ctx.schedule("timer", duration, { type: "timeout", index: 0 });
+      return {
+        phase: "question",
+        questions: ctx.random.shuffle(bank).slice(0, ctx.settings.questions),
+        index: 0,
+        startedAt: ctx.now,
+        deadline: ctx.now + duration,
+        answers: {},
+        gained: {},
+        scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])),
+        players: ctx.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar })),
+      };
+    },
 
-  reduce(s, action, ctx) {
-    switch (action.type) {
-      case "answer": {
-        const me = ctx.requirePlayer();
-        if (s.phase !== "question") ctx.reject("Les réponses sont fermées.");
-        if (ctx.now > s.deadline) ctx.reject("Trop tard !");
-        if (s.answers[me]) ctx.reject("Tu as déjà répondu.");
-        s.answers[me] = { choice: action.choice, at: ctx.now };
-        ctx.emit("answered", { by: me }, "screens");
-        if (s.players.every((p) => s.answers[p.id])) {
-          ctx.cancel("timer");
-          ctx.schedule("timer", REVEAL_DELAY_MS, { type: "reveal", index: s.index });
-        }
-        return;
-      }
-
-      case "next": {
-        ctx.requireHost();
-        if (s.phase !== "reveal") ctx.reject("Attends la fin de la question.");
-        if (s.index + 1 >= s.questions.length) {
-          s.phase = "podium";
+    reduce(s, action, ctx) {
+      switch (action.type) {
+        case "answer": {
+          const me = ctx.requirePlayer();
+          if (s.phase !== "question") ctx.reject("Les réponses sont fermées.");
+          if (ctx.now > s.deadline) ctx.reject("Trop tard !");
+          if (s.answers[me]) ctx.reject("Tu as déjà répondu.");
+          s.answers[me] = { choice: action.choice, at: ctx.now };
+          ctx.emit("answered", { by: me }, "screens");
+          if (s.players.every((p) => s.answers[p.id])) {
+            ctx.cancel("timer");
+            ctx.schedule("timer", REVEAL_DELAY_MS, { type: "reveal", index: s.index });
+          }
           return;
         }
-        const duration = ctx.settings.seconds * 1000;
-        s.index++;
-        s.phase = "question";
-        s.answers = {};
-        s.gained = {};
-        s.startedAt = ctx.now;
-        s.deadline = ctx.now + duration;
-        ctx.schedule("timer", duration, { type: "timeout", index: s.index });
-        return;
+
+        case "next": {
+          ctx.requireHost();
+          if (s.phase !== "reveal") ctx.reject("Attends la fin de la question.");
+          if (s.index + 1 >= s.questions.length) {
+            s.phase = "podium";
+            return;
+          }
+          const duration = ctx.settings.seconds * 1000;
+          s.index++;
+          s.phase = "question";
+          s.answers = {};
+          s.gained = {};
+          s.startedAt = ctx.now;
+          s.deadline = ctx.now + duration;
+          ctx.schedule("timer", duration, { type: "timeout", index: s.index });
+          return;
+        }
+
+        case "timeout":
+        case "reveal":
+          // Garde-fou : une action système d'une question précédente est ignorée.
+          if (ctx.actor.kind !== "system" || s.phase !== "question" || action.index !== s.index) return;
+          reveal(s);
+          ctx.emit("reveal", { index: s.index }, "all");
+          return;
       }
-
-      case "timeout":
-      case "reveal":
-        // Garde-fou : une action système d'une question précédente est ignorée.
-        if (ctx.actor.kind !== "system" || s.phase !== "question" || action.index !== s.index) return;
-        reveal(s);
-        ctx.emit("reveal", { index: s.index }, "all");
-        return;
-    }
-  },
-
-  views: {
-    public(s): BuzzerPublic {
-      const q = current(s);
-      const open = s.phase === "question";
-      const counts: [number, number, number, number] = [0, 0, 0, 0];
-      if (!open) for (const a of Object.values(s.answers)) counts[a.choice]++;
-      return {
-        phase: s.phase,
-        index: s.index,
-        total: s.questions.length,
-        question: { text: q.text, choices: q.choices },
-        deadline: s.deadline,
-        duration: s.deadline - s.startedAt,
-        answered: Object.keys(s.answers),
-        reveal: open ? null : { correct: q.answer, counts, gained: s.gained },
-        scores: s.scores,
-        ranking: ranking(s),
-      };
     },
-    private(s, playerId): BuzzerPrivate {
-      const mine = s.answers[playerId];
-      return {
-        myAnswer: mine?.choice ?? null,
-        result:
-          s.phase === "question"
-            ? null
-            : { correct: mine?.choice === current(s).answer, gained: s.gained[playerId] ?? 0 },
-      };
+
+    views: {
+      public(s): BuzzerPublic {
+        const q = current(s);
+        const open = s.phase === "question";
+        const counts: [number, number, number, number] = [0, 0, 0, 0];
+        if (!open) for (const a of Object.values(s.answers)) counts[a.choice]++;
+        return {
+          phase: s.phase,
+          index: s.index,
+          total: s.questions.length,
+          question: { text: q.text, choices: q.choices },
+          deadline: s.deadline,
+          duration: s.deadline - s.startedAt,
+          answered: Object.keys(s.answers),
+          reveal: open ? null : { correct: q.answer, counts, gained: s.gained },
+          scores: s.scores,
+          ranking: ranking(s),
+        };
+      },
+      private(s, playerId): BuzzerPrivate {
+        const mine = s.answers[playerId];
+        return {
+          myAnswer: mine?.choice ?? null,
+          result:
+            s.phase === "question"
+              ? null
+              : { correct: mine?.choice === current(s).answer, gained: s.gained[playerId] ?? 0 },
+        };
+      },
     },
-  },
 
-  isOver: (s) => s.phase === "podium",
+    isOver: (s) => s.phase === "podium",
 
-  onPlayerLeave(s, playerId, ctx) {
-    s.players = s.players.filter((p) => p.id !== playerId);
-    delete s.answers[playerId];
-    delete s.scores[playerId];
-    if (s.phase === "question" && s.players.length > 0 && s.players.every((p) => s.answers[p.id])) {
-      ctx.cancel("timer");
-      ctx.schedule("timer", REVEAL_DELAY_MS, { type: "reveal", index: s.index });
-    }
-  },
-});
+    onPlayerLeave(s, playerId, ctx) {
+      s.players = s.players.filter((p) => p.id !== playerId);
+      delete s.answers[playerId];
+      delete s.scores[playerId];
+      if (s.phase === "question" && s.players.length > 0 && s.players.every((p) => s.answers[p.id])) {
+        ctx.cancel("timer");
+        ctx.schedule("timer", REVEAL_DELAY_MS, { type: "reveal", index: s.index });
+      }
+    },
 
-export type Buzzer = typeof buzzer;
+    // Bots : ils répondent à chaque question après un temps de réflexion, et « connaissent » la
+    // bonne réponse avec une probabilité BOT_SKILL (lue dans l'état complet), sinon ils devinent.
+    bots: {
+      names: [
+        "Quizbot",
+        "Mme Je-sais-tout",
+        "Professeur Hasard",
+        "Petit Génie",
+        "Tonton Culture",
+        "La Chouette",
+      ],
+      decide(view, state, ctx) {
+        if (view.public.phase !== "question" || view.private?.myAnswer !== null) return null;
+        const correct = current(state).answer;
+        const choice = ctx.random.chance(BOT_SKILL) ? correct : (ctx.random.int(0, 3) as Choice);
+        return { type: "answer" as const, choice };
+      },
+      // Entre 1,5 s et 70 % du chrono : les bots laissent aux humains le temps de répondre.
+      delay: (_action, ctx) => 1500 + ctx.random.next() * Math.max(0, ctx.settings.seconds * 700 - 1500),
+    },
+  });
+
+export type Buzzer = ReturnType<typeof createBuzzer>;

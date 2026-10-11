@@ -77,6 +77,10 @@ export function Home() {
         </section>
       </div>
 
+      <button className="btn btn-ghost btn-demo" onClick={() => navigate("/demo")}>
+        🤖 Essayer en solo contre des bots
+      </button>
+
       {error && (
         <p className="error" role="alert">
           {error}

@@ -1,6 +1,7 @@
 import { isDiscordActivity } from "@gamecore/discord/client";
 import { Suspense } from "react";
 import { useRoute } from "./router.js";
+import { Demo } from "./screens/Demo.js";
 import { DiscordActivity } from "./screens/DiscordActivity.js";
 import { DiscordCallback } from "./screens/DiscordCallback.js";
 import { Home } from "./screens/Home.js";
@@ -20,6 +21,8 @@ function Pages() {
       return <Phone key={route.code} code={route.code} />;
     case "discord-callback":
       return <DiscordCallback />;
+    case "demo":
+      return <Demo />;
     default:
       return <Home />;
   }

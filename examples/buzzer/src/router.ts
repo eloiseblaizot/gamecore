@@ -3,6 +3,7 @@
  *   /              accueil
  *   /screen/CODE   écran de l'hôte (télé, PC partagé)
  *   /play/CODE     manette (téléphone d'un joueur)
+ *   /demo          mode démo (contre des bots, sans serveur)
  *   /auth/discord  retour de la connexion Discord
  */
 
@@ -13,10 +14,12 @@ export type Route =
   | { name: "home" }
   | { name: "screen"; code: string }
   | { name: "play"; code: string }
+  | { name: "demo" }
   | { name: "discord-callback" };
 
 export function parseRoute(pathname: string): Route {
   if (pathname === "/auth/discord") return { name: "discord-callback" };
+  if (pathname === "/demo") return { name: "demo" };
   const match = /^\/(screen|play)\/([^/]+)\/?$/.exec(pathname);
   if (match) {
     const code = normalizeRoomCode(decodeURIComponent(match[2]!));

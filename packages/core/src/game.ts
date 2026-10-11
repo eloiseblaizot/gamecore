@@ -89,6 +89,7 @@ export interface BotStrategy<State, Action, Settings, PublicView, PrivateView> {
    * vue de joueur (exactement ce que verrait un humain à sa place) ET l'état complet : à
    * toi de choisir ce qu'il a le droit d'exploiter (un bot de quiz peut « connaître » la
    * réponse une fois sur deux pour simuler un niveau). Doit rester une fonction pure.
+   * Astuce : renvoyer `{ type: "answer" as const, … }`, sinon TypeScript élargit le littéral.
    */
   decide(view: GameSnapshot<PublicView, PrivateView>, state: State, ctx: BotContext<Settings>): Action | null;
   /** Délai « humain » avant de jouer ce coup (ms). Par défaut entre 0,8 et 2,5 s. */

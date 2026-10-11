@@ -1,14 +1,17 @@
 import { createTestServer, type TestClient } from "@gamecore/server/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { isBot } from "@gamecore/core";
+import { DEMO_QUESTIONS } from "./demo-questions.js";
 import {
   BASE_POINTS,
   REVEAL_DELAY_MS,
   SPEED_POINTS,
-  buzzer,
+  createBuzzer,
   pointsFor,
   type BuzzerPrivate,
   type BuzzerPublic,
 } from "./game.js";
+import { buzzer } from "./online.js";
 import { QUESTIONS } from "./questions.js";
 
 type Client = TestClient<BuzzerPublic, BuzzerPrivate>;
@@ -176,5 +179,47 @@ describe("Buzzer !", () => {
     // Bornes : jamais plus que le maximum, jamais moins que la base.
     expect(pointsFor(s, -5_000)).toBe(1000);
     expect(pointsFor(s, 20_000)).toBe(500);
+  });
+
+  it("fait jouer des bots qui répondent seuls à chaque question", async () => {
+    const { client } = createTestServer({ game: buzzer });
+    const screen: Client = client();
+    const { code } = await screen.create("screen", undefined, { questions: 2, seconds: 10 });
+    const alice: Client = client();
+    await alice.join(code, "Alice");
+    await screen.lobby({ op: "addBot" });
+    await screen.lobby({ op: "addBot" });
+    expect(
+      screen
+        .sync()
+        .room.members.filter(isBot)
+        .map((m) => m.name),
+    ).toEqual(["Quizbot", "Mme Je-sais-tout"]);
+    await screen.lobby({ op: "start" });
+    // Les bots répondent avant 70 % du chrono ; Alice, elle, ne répond pas.
+    await vi.advanceTimersByTimeAsync(7_000);
+    expect(screen.sync().game!.public.answered).toHaveLength(2);
+    await alice.act({ type: "answer", choice: correctAnswer(screen) });
+    await vi.advanceTimersByTimeAsync(REVEAL_DELAY_MS);
+    expect(screen.sync().game!.public.phase).toBe("reveal");
+    await screen.act({ type: "next" });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(screen.sync().game!.public).toMatchObject({ index: 1, phase: "reveal" });
+  });
+
+  it("instancie les règles avec n'importe quelle banque (mode démo)", async () => {
+    const demo = createBuzzer(DEMO_QUESTIONS);
+    expect(demo.settings.defaults).toEqual({ questions: 5, seconds: 15 });
+    const { client } = createTestServer({ game: demo });
+    const screen: Client = client();
+    const { code } = await screen.create("screen", undefined, { questions: 10 });
+    await client().join(code, "Alice");
+    await screen.lobby({ op: "start" });
+    const text = screen.sync().game!.public.question.text;
+    expect(DEMO_QUESTIONS.map((q) => q.text)).toContain(text);
+    expect(QUESTIONS.map((q) => q.text)).not.toContain(text);
+    expect(
+      await screen.expectError({ t: "lobby", op: { op: "settings", settings: { questions: 11 } } }),
+    ).toBe("GAME_RUNNING");
   });
 });
