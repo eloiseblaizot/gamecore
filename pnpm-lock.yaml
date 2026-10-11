@@ -68,6 +68,9 @@ importers:
       '@gamecore/discord':
         specifier: workspace:*
         version: link:../../packages/discord
+      '@gamecore/livekit':
+        specifier: workspace:*
+        version: link:../../packages/livekit
       '@gamecore/react':
         specifier: workspace:*
         version: link:../../packages/react

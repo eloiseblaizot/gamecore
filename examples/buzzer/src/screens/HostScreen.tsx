@@ -22,6 +22,8 @@ import { Avatar } from "../ui/Avatar.js";
 import { CHOICE_STYLES } from "../ui/choices.js";
 import { Countdown } from "../ui/Countdown.js";
 import { ConnectionBanner, Notice } from "../ui/Notice.js";
+import { MemberVideo, useMedia } from "@gamecore/livekit/react";
+import { BuzzerMedia, MemberFace } from "../media.js";
 import { useScreenSounds } from "../sounds.js";
 import { enterErrorTitle, useEnterRoom } from "../useEnterRoom.js";
 
@@ -46,11 +48,13 @@ export function HostScreen({ code, demo = false }: { code: string; demo?: boolea
   }
 
   return (
-    <main className="page screen">
-      <ConnectionBanner status={status} />
-      <Reactions />
-      {room.status === "lobby" ? <Lobby demo={demo} /> : <Stage />}
-    </main>
+    <BuzzerMedia>
+      <main className="page screen">
+        <ConnectionBanner status={status} />
+        <Reactions />
+        {room.status === "lobby" ? <Lobby demo={demo} /> : <Stage />}
+      </main>
+    </BuzzerMedia>
   );
 }
 
@@ -119,7 +123,11 @@ function Lobby({ demo }: { demo: boolean }) {
 
         {isHost && (
           <div className="host-controls">
-            <Settings settings={room.settings} onChange={(s) => run(() => client.lobby.settings(s))} />
+            <Settings
+              settings={room.settings}
+              media={room.modules.includes("livekit")}
+              onChange={(s) => run(() => client.lobby.settings(s))}
+            />
             <button className="btn btn-secondary" onClick={() => run(() => client.lobby.addBot())}>
               🤖 Ajouter un bot
             </button>
@@ -153,7 +161,7 @@ function PlayerChip({
 }) {
   return (
     <li className={`player-chip${member.connected ? "" : " is-away"}`}>
-      <Avatar name={member.name} avatar={member.avatar} />
+      <MemberFace id={member.id} name={member.name} avatar={member.avatar} />
       <span className="player-name">{member.name}</span>
       {member.isHost && <span className="badge">host</span>}
       {isBot(member) && <span className="badge badge-bot">bot</span>}
@@ -168,9 +176,12 @@ function PlayerChip({
 
 function Settings({
   settings,
+  media,
   onChange,
 }: {
   settings: BuzzerSettings;
+  /** Le serveur propose-t-il la vidéo (LiveKit) ? */
+  media: boolean;
   onChange: (s: Partial<BuzzerSettings>) => void;
 }) {
   return (
@@ -196,6 +207,26 @@ function Settings({
           ))}
         </select>
       </label>
+      {media && (
+        <>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={settings.camera}
+              onChange={(e) => onChange({ camera: e.target.checked })}
+            />
+            Caméras
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={settings.micro}
+              onChange={(e) => onChange({ micro: e.target.checked })}
+            />
+            Micros
+          </label>
+        </>
+      )}
     </fieldset>
   );
 }
@@ -279,6 +310,8 @@ function Stage() {
         <Scoreboard pub={pub} players={players} />
       )}
 
+      <CamStrip players={players} />
+
       {isHost && pub.phase === "reveal" && (
         <div className="stage-actions">
           <button className="btn btn-primary btn-big" onClick={() => run(() => client.act({ type: "next" }))}>
@@ -295,6 +328,23 @@ function Stage() {
   );
 }
 
+/** Bandeau des webcams des joueurs (seulement si au moins une est allumée). */
+function CamStrip({ players }: { players: MemberInfo[] }) {
+  const { tiles } = useMedia();
+  const filmed = players.filter((p) => tiles[p.id]?.video && !tiles[p.id]?.camOff);
+  if (filmed.length === 0) return null;
+  return (
+    <ul className="cam-strip" aria-label="Webcams des joueurs">
+      {filmed.map((p) => (
+        <li key={p.id} className={tiles[p.id]?.speaking ? "is-speaking" : undefined}>
+          <MemberVideo memberId={p.id} className="cam-video" />
+          <span>{p.name}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Scoreboard({ pub, players }: { pub: BuzzerPublic; players: MemberInfo[] }) {
   const byId = new Map(players.map((p) => [p.id, p]));
   return (
@@ -304,7 +354,7 @@ function Scoreboard({ pub, players }: { pub: BuzzerPublic; players: MemberInfo[]
         return (
           <li key={r.id} className={byId.get(r.id)?.connected === false ? "is-away" : undefined}>
             <span className="rank">{r.rank}</span>
-            <Avatar name={r.name} avatar={r.avatar} size={36} />
+            <MemberFace id={r.id} name={r.name} avatar={r.avatar} size={36} />
             <span className="player-name">{r.name}</span>
             {gained > 0 && <span className="gained">+{gained}</span>}
             <span className="score">{r.score}</span>

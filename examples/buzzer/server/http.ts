@@ -28,13 +28,16 @@ const MIME: Record<string, string> = {
  * Par défaut, `frame-ancestors 'none'` interdit d'intégrer le jeu dans une iframe
  * (anti-clickjacking) ; une Discord Activity a besoin de l'autoriser pour Discord seulement.
  */
-export function contentSecurityPolicy(frameAncestors: readonly string[] = ["'none'"]): string {
+export function contentSecurityPolicy(
+  frameAncestors: readonly string[] = ["'none'"],
+  connectSources: readonly string[] = [],
+): string {
   return [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
     "img-src 'self' data: https://cdn.discordapp.com",
-    "connect-src 'self'",
+    ["connect-src 'self'", ...connectSources].join(" "),
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
@@ -50,15 +53,22 @@ export const DISCORD_FRAME_ANCESTORS = [
   "https://*.discordsays.com",
 ] as const;
 
-export function securityHeaders(frameAncestors?: readonly string[]): Record<string, string> {
+/**
+ * `connectSources` : origines supplémentaires autorisées pour les connexions (le serveur
+ * LiveKit configuré, et lui seul).
+ */
+export function securityHeaders(
+  frameAncestors?: readonly string[],
+  connectSources: readonly string[] = [],
+): Record<string, string> {
   const headers: Record<string, string> = {
-    "Content-Security-Policy": contentSecurityPolicy(frameAncestors),
+    "Content-Security-Policy": contentSecurityPolicy(frameAncestors, connectSources),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Resource-Policy": "same-origin",
-    // Le quiz n'a besoin ni de caméra, ni de micro, ni de localisation.
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    // Caméra et micro pour la page elle-même seulement (webcams des joueurs) ; rien d'autre.
+    "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()",
   };
   // Anciens navigateurs : X-Frame-Options, seulement quand aucune intégration n'est permise.
   if (!frameAncestors) headers["X-Frame-Options"] = "DENY";
@@ -68,10 +78,10 @@ export function securityHeaders(frameAncestors?: readonly string[]): Record<stri
 /** Crée un gestionnaire HTTP qui sert `root` (application monopage : repli sur index.html). */
 export function staticHandler(
   root: string,
-  options: { hsts?: boolean; frameAncestors?: readonly string[] } = {},
+  options: { hsts?: boolean; frameAncestors?: readonly string[]; connectSources?: readonly string[] } = {},
 ) {
   const base = resolve(root);
-  const headers = securityHeaders(options.frameAncestors);
+  const headers = securityHeaders(options.frameAncestors, options.connectSources);
   if (options.hsts) headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
 
   return async (req: IncomingMessage, res: ServerResponse): Promise<void> => {

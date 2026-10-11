@@ -60,6 +60,10 @@ export function settingsSchemaFor(questionCount: number) {
     questions: z.number().int().min(1).max(questionCount),
     /** Secondes pour répondre. */
     seconds: z.number().int().min(5).max(60),
+    /** Webcams des joueurs (si le serveur a LiveKit). */
+    camera: z.boolean(),
+    /** Micros des joueurs (si le serveur a LiveKit). */
+    micro: z.boolean(),
   });
 }
 export type BuzzerSettings = z.infer<ReturnType<typeof settingsSchemaFor>>;
@@ -152,7 +156,7 @@ export const createBuzzer = (bank: readonly Question[]) =>
     maxPlayers: MAX_PLAYERS,
     settings: {
       schema: settingsSchemaFor(bank.length),
-      defaults: { questions: Math.min(5, bank.length), seconds: 15 },
+      defaults: { questions: Math.min(5, bank.length), seconds: 15, camera: false, micro: false },
     },
     actions: actionSchema,
     systemActions: systemActionSchema,

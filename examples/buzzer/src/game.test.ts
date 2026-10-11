@@ -209,7 +209,7 @@ describe("Buzzer !", () => {
 
   it("instancie les règles avec n'importe quelle banque (mode démo)", async () => {
     const demo = createBuzzer(DEMO_QUESTIONS);
-    expect(demo.settings.defaults).toEqual({ questions: 5, seconds: 15 });
+    expect(demo.settings.defaults).toEqual({ questions: 5, seconds: 15, camera: false, micro: false });
     const { client } = createTestServer({ game: demo });
     const screen: Client = client();
     const { code } = await screen.create("screen", undefined, { questions: 10 });

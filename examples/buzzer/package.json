@@ -16,6 +16,7 @@
     "@gamecore/client": "workspace:*",
     "@gamecore/core": "workspace:*",
     "@gamecore/discord": "workspace:*",
+    "@gamecore/livekit": "workspace:*",
     "@gamecore/react": "workspace:*",
     "@gamecore/server": "workspace:*",
     "react": "^19.3.0",

@@ -11,6 +11,9 @@
  *                    même box, tous les téléphones d'une soirée partagent la même adresse.
  *   NODE_ENV         « production » pour servir dist/ (sinon Vite sert l'application)
  *
+ * LiveKit (facultatif, voir docs/livekit.md) :
+ *   LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET   serveur LiveKit (le secret reste ici)
+ *
  * Discord (facultatif, voir docs/discord.md) :
  *   DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET   application Discord (le secret reste ici)
  *   DISCORD_REDIRECT_URI   URL de retour de la connexion web (ex. https://monjeu.fr/auth/discord)
@@ -20,11 +23,13 @@
 
 import { createDiscordTokenHandler, discordAuthenticator, toNodeHandler } from "@gamecore/discord/server";
 import { DISCORD_PROVIDER } from "@gamecore/discord";
-import { GameServer, consoleLogger, controllerModule } from "@gamecore/server";
+import { livekitModule } from "@gamecore/livekit/server";
+import { GameServer, consoleLogger, controllerModule, type ServerModule } from "@gamecore/server";
 import { attachSocketIo, secureSocketIoOptions } from "@gamecore/server/socket-io";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
+import type { BuzzerSettings } from "../src/game.js";
 import { buzzer } from "../src/online.js";
 import { reactionSchema } from "../src/reactions.js";
 import { DISCORD_FRAME_ANCESTORS, staticHandler } from "./http.js";
@@ -55,13 +60,42 @@ const discord =
       }
     : null;
 
+/** Vidéo : activée seulement si le serveur LiveKit est entièrement configuré. */
+const livekit =
+  env.LIVEKIT_URL && env.LIVEKIT_API_KEY && env.LIVEKIT_API_SECRET
+    ? { url: env.LIVEKIT_URL, apiKey: env.LIVEKIT_API_KEY, apiSecret: env.LIVEKIT_API_SECRET }
+    : null;
+
+const modules: ServerModule[] = [
+  // Les téléphones peuvent envoyer des réactions (emojis) qui s'envolent sur l'écran.
+  controllerModule({ schema: reactionSchema, inputsPerSecond: 3, from: "members" }),
+];
+if (livekit) {
+  modules.push(
+    livekitModule({
+      ...livekit,
+      // Caméras et micros selon les réglages de l'host ; seuls les joueurs publient.
+      policy: ({ member, settings }) => {
+        const s = settings as BuzzerSettings;
+        if (!s.camera && !s.micro) return null;
+        const player = member?.role === "player";
+        return { publish: { camera: player && s.camera, microphone: player && s.micro } };
+      },
+    }),
+  );
+}
+
+/** Origines du serveur LiveKit (WebSocket et HTTP), seules autorisées en plus de la nôtre. */
+function livekitOrigins(url: string): string[] {
+  return [new URL(url).origin, new URL(url.replace(/^ws/, "http")).origin];
+}
+
 const game = new GameServer({
   game: buzzer,
   logger: consoleLogger,
   roomsPerMinutePerIp: envInt("ROOMS_PER_MINUTE_PER_IP", 10),
   limits: { failedJoinsPerMinute: envInt("FAILED_JOINS_PER_MINUTE", 12) },
-  // Les téléphones peuvent envoyer des réactions (emojis) qui s'envolent sur l'écran.
-  modules: [controllerModule({ schema: reactionSchema, inputsPerSecond: 3, from: "members" })],
+  modules,
   ...(discord && {
     authenticate: discordAuthenticator({ apiBase: discord.apiBase }),
     // Discord Activity : le salon de l'instance est créé par le premier compte Discord qui arrive.
@@ -72,6 +106,7 @@ const game = new GameServer({
 const serveApp = staticHandler(fileURLToPath(new URL("../dist", import.meta.url)), {
   hsts: production && env.HSTS === "1",
   frameAncestors: env.DISCORD_ACTIVITY === "1" ? DISCORD_FRAME_ANCESTORS : undefined,
+  connectSources: livekit ? livekitOrigins(livekit.url) : [],
 });
 
 const discordToken = discord ? toNodeHandler(createDiscordTokenHandler(discord), { trustProxy }) : null;
@@ -112,6 +147,7 @@ http.listen(port, () => {
     production,
     allowedOrigins,
     discord: discord !== null,
+    livekit: livekit?.url ?? false,
   });
 });
 

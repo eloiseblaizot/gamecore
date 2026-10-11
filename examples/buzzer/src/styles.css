@@ -804,6 +804,84 @@ select {
   max-width: 420px;
 }
 
+/* --- Webcams et micros (@gamecore/livekit) ----------------------------------- */
+
+.face {
+  display: inline-flex;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  outline: 3px solid transparent;
+  transition: outline-color 150ms ease;
+}
+
+.face.is-speaking,
+.cam-strip li.is-speaking {
+  outline-color: var(--ok);
+}
+
+.face-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cam-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cam-strip li {
+  position: relative;
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  outline: 3px solid transparent;
+}
+
+.cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cam-strip span {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px #000;
+}
+
+.media-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.start-audio {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
 /* --- Réglages du son (composant SoundControls de @gamecore/audio) ---------- */
 
 .sound-controls {

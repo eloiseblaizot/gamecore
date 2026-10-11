@@ -3,6 +3,7 @@
  * branchés sur un serveur gamecore qui tourne dans la page (transport local), avec des bots.
  */
 
+import { LocalMedia } from "@gamecore/livekit/react";
 import { GameProvider } from "@gamecore/react";
 import { useEffect, useState } from "react";
 import type { Demo as DemoRoom } from "../demo.js";
@@ -41,25 +42,28 @@ export function Demo() {
     );
   }
   return (
-    <div className="demo">
-      <header className="demo-bar">
-        <p>
-          <strong>Mode démo</strong> — tout se passe dans ton navigateur : tu joues contre des bots.
-        </p>
-        <button className="btn btn-ghost" onClick={() => navigate("/")}>
-          Quitter la démo
-        </button>
-      </header>
-      <section className="demo-screen" aria-label="Écran de jeu">
-        <GameProvider client={demo.screen}>
-          <HostScreen code={demo.code} demo />
-        </GameProvider>
-      </section>
-      <section className="demo-phone" aria-label="Ton téléphone">
-        <GameProvider client={demo.player}>
-          <Phone code={demo.code} />
-        </GameProvider>
-      </section>
-    </div>
+    // La webcam locale (facultative) est partagée par l'écran et le téléphone de la démo.
+    <LocalMedia memberId={demo.player.getState().session?.memberId ?? null}>
+      <div className="demo">
+        <header className="demo-bar">
+          <p>
+            <strong>Mode démo</strong> — tout se passe dans ton navigateur : tu joues contre des bots.
+          </p>
+          <button className="btn btn-ghost" onClick={() => navigate("/")}>
+            Quitter la démo
+          </button>
+        </header>
+        <section className="demo-screen" aria-label="Écran de jeu">
+          <GameProvider client={demo.screen}>
+            <HostScreen code={demo.code} demo />
+          </GameProvider>
+        </section>
+        <section className="demo-phone" aria-label="Ton téléphone">
+          <GameProvider client={demo.player}>
+            <Phone code={demo.code} />
+          </GameProvider>
+        </section>
+      </div>
+    </LocalMedia>
   );
 }

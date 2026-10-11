@@ -23,10 +23,10 @@ import { useConfig } from "../config.js";
 import type { Buzzer, Choice } from "../game.js";
 import { REACTIONS } from "../reactions.js";
 import { navigate } from "../router.js";
-import { Avatar } from "../ui/Avatar.js";
 import { CHOICE_STYLES } from "../ui/choices.js";
 import { Countdown } from "../ui/Countdown.js";
 import { ConnectionBanner, Notice } from "../ui/Notice.js";
+import { BuzzerMedia, MediaControls, MemberFace } from "../media.js";
 import { usePhoneSounds } from "../sounds.js";
 import { enterErrorTitle, useEnterRoom } from "../useEnterRoom.js";
 
@@ -58,12 +58,15 @@ export function Phone({ code }: { code: string }) {
     );
   }
   return (
-    <main className="page phone">
-      <ConnectionBanner status={status} />
-      <PhoneHeader />
-      {room.status === "lobby" ? <Waiting /> : <Controller />}
-      <ReactionBar />
-    </main>
+    <BuzzerMedia>
+      <main className="page phone">
+        <ConnectionBanner status={status} />
+        <PhoneHeader />
+        {room.status === "lobby" ? <Waiting /> : <Controller />}
+        <MediaControls />
+        <ReactionBar />
+      </main>
+    </BuzzerMedia>
   );
 }
 
@@ -175,7 +178,7 @@ function PhoneHeader() {
   const score = game?.public.scores[me.id];
   return (
     <header className="phone-header">
-      <Avatar name={me.name} avatar={me.avatar} size={36} />
+      <MemberFace id={me.id} name={me.name} avatar={me.avatar} size={36} />
       <span className="player-name">{me.name}</span>
       {score !== undefined && (
         <span className="score" data-testid="my-score">
