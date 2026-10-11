@@ -11,6 +11,7 @@
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build",
     "dev:buzzer": "pnpm --filter @gamecore/example-buzzer dev",
+    "dev:sim-playground": "pnpm --filter @gamecore/example-sim-playground dev",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
