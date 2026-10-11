@@ -44,7 +44,10 @@ test("LiveKit : la webcam d'un joueur arrive sur l'écran de l'hôte", async ({ 
   test.setTimeout(90_000);
   const { screen, code } = await openScreen(browser);
   const errors = cspErrors(screen);
-  await screen.getByLabel("Caméras").check();
+  // Case pilotée par le serveur (aller-retour) : on clique puis on attend l'état confirmé.
+  const cameras = screen.getByLabel("Caméras");
+  await cameras.click();
+  await expect(cameras).toBeChecked();
 
   const alice = await joinPhone(browser, code, "Alice");
   const aliceErrors = cspErrors(alice);
@@ -54,7 +57,8 @@ test("LiveKit : la webcam d'un joueur arrive sur l'écran de l'hôte", async ({ 
   await expectPlaying(screen.getByTestId("face-Alice").locator("video"));
 
   // L'host coupe les caméras : la vidéo disparaît.
-  await screen.getByLabel("Caméras").uncheck();
+  await cameras.click();
+  await expect(cameras).not.toBeChecked();
   await expect(screen.getByTestId("face-Alice").locator("video")).toHaveCount(0, { timeout: 20_000 });
   expect([...errors, ...aliceErrors]).toEqual([]);
 });
