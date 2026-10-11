@@ -47,8 +47,8 @@ export interface MediaState {
     micOn: boolean;
     canCamera: boolean;
     canMicrophone: boolean;
-    toggleCam(): void;
-    toggleMic(): void;
+    toggleCam: () => void;
+    toggleMic: () => void;
   } | null;
   /** Quelqu'un d'autre que moi parle-t-il ? (pour baisser la musique) */
   someoneSpeaking: boolean;
@@ -152,6 +152,9 @@ export function LiveKitMedia({
     };
   }, [client, rightsKey]);
 
+  // Salon sans module LiveKit (mode démo…) : on laisse passer les médias fournis plus haut
+  // (ex. `LocalMedia`) au lieu de les masquer.
+  if (room && !room.modules.includes("livekit")) return <>{children}</>;
   if (!available || !access) {
     return <MediaContext value={{ ...NO_MEDIA, error: available ? error : null }}>{children}</MediaContext>;
   }

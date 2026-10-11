@@ -101,6 +101,22 @@ describe("LiveKitMedia", () => {
   });
 });
 
+describe("LiveKitMedia sans module LiveKit", () => {
+  it("laisse passer les médias fournis plus haut (webcam locale du mode démo)", async () => {
+    const client = await joined([]);
+    render(
+      <LocalMedia memberId="m_moi">
+        <GameProvider client={client}>
+          <LiveKitMedia enabled>
+            <Probe />
+          </LiveKitMedia>
+        </GameProvider>
+      </LocalMedia>,
+    );
+    await waitFor(() => expect(screen.getByTestId("media").textContent).toBe("local|"));
+  });
+});
+
 describe("tilesFrom", () => {
   it("associe à chaque membre sa vidéo et son état", () => {
     const participant = (identity: string, extra = {}) => ({
