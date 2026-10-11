@@ -58,12 +58,23 @@ test("aucun téléphone ne reçoit la bonne réponse ni la réponse d'un autre a
   expect(new Set(aliceChoices)).toEqual(new Set([`"myAnswer":${good}`]));
 });
 
-test("le JavaScript envoyé aux joueurs ne contient pas les réponses", async ({ request }) => {
+test("aucun JavaScript servi aux navigateurs, démo comprise, ne contient les réponses du mode en ligne", async ({
+  request,
+}) => {
   const html = await (await request.get("/")).text();
-  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]!);
-  expect(scripts.length).toBeGreaterThan(0);
-  for (const src of scripts) {
-    const js = await (await request.get(src)).text();
+  const entries = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]!);
+  expect(entries.length).toBeGreaterThan(0);
+  // Les morceaux chargés à la demande (démo, SDK Discord…) sont référencés par le point d'entrée.
+  const files = new Set(entries);
+  for (const entry of entries) {
+    const js = await (await request.get(entry)).text();
+    // Imports dynamiques relatifs au point d'entrée : `import("./demo-XXXX.js")`.
+    const base = entry.slice(0, entry.lastIndexOf("/") + 1);
+    for (const m of js.matchAll(/["'`]\.\/([\w.-]+\.js)["'`]/g)) files.add(`${base}${m[1]}`);
+  }
+  expect([...files].some((f) => f.includes("demo"))).toBe(true);
+  for (const file of files) {
+    const js = await (await request.get(file)).text();
     for (const q of QUESTIONS) {
       expect(js).not.toContain(q.text);
       // Les réponses courtes (« 3 », « 6 »…) apparaissent forcément ailleurs dans le code.
