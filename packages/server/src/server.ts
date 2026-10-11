@@ -15,6 +15,7 @@
  */
 
 import {
+  BOT_PROVIDER,
   DEFAULT_AVATAR_POLICY,
   DEFAULT_LIMITS,
   GameError,
@@ -83,6 +84,8 @@ export interface GameServerOptions {
   allowSpectators?: boolean;
   /** Un écran sans jeton d'administration peut-il se brancher ? (Oui par défaut : vue publique.) */
   allowAnonymousScreens?: boolean;
+  /** Bots max par salon (8 par défaut ; le jeu doit déclarer une stratégie `bots`). */
+  maxBotsPerRoom?: number;
   /** Infractions tolérées par minute avant de fermer la connexion (10 par défaut). */
   maxViolationsPerMinute?: number;
 }
@@ -217,6 +220,7 @@ export class GameServer {
     if (this.rooms.has(code)) throw new GameError("BAD_REQUEST", "Ce code de salon est déjà utilisé.");
 
     const settings = resolveSettings(this.game, this.game.settings.defaults, options.settings);
+    const seed = options.seed ?? randomSeed();
     if (!settings.ok) throw settings.error;
 
     const adminToken = generateToken();
@@ -227,7 +231,9 @@ export class GameServer {
       code,
       game: this.game,
       settings: settings.settings,
-      rng: seedFromString(options.seed ?? randomSeed()),
+      rng: seedFromString(seed),
+      botRng: seedFromString(`${seed}:bots`),
+      maxBots: this.options.maxBotsPerRoom,
       modules: this.options.modules ?? [],
       limits: this.limits,
       clock: this.clock,
@@ -408,7 +414,8 @@ export class GameServer {
       this.logger.warn("échec de la vérification d'identité", { cause: String(err) });
       return null;
     });
-    if (!verified) {
+    // « bot » est réservé aux bots du serveur : une identité vérifiée ne peut pas s'en réclamer.
+    if (!verified || verified.provider === BOT_PROVIDER || verified.provider === "guest") {
       this.failedJoins.record(this.ipKey(client));
       throw new GameError("UNAUTHORIZED", "Identification refusée.");
     }

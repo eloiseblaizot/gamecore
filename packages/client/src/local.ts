@@ -9,7 +9,9 @@
  *   const client = new GameClient({ transport: localTransport(server), storage: null });
  */
 
-import type { Connection, GameServer } from "@gamecore/server";
+import type { AnyGame, Welcome } from "@gamecore/core";
+import { GameServer, silentLogger, type Connection, type GameServerOptions } from "@gamecore/server";
+import { GameClient } from "./client.js";
 import type { ClientTransport } from "./transport.js";
 
 let seq = 0;
@@ -51,6 +53,77 @@ export function localTransport(server: GameServer, options: LocalTransportOption
     close() {
       if (conn) server.disconnect(conn.id);
       conn = null;
+    },
+  };
+}
+
+export interface DemoRoomOptions<G extends AnyGame> extends Omit<GameServerOptions, "game"> {
+  game: G;
+  /** Le joueur humain. */
+  player: { name: string; avatar?: string | null };
+  /** Nombre de bots à ajouter (3 par défaut). */
+  bots?: number;
+  /** Ajouter un écran partagé (vue publique, droits d'admin) ? Oui par défaut. */
+  screen?: boolean;
+  /** Réglages de la partie. */
+  settings?: Record<string, unknown>;
+  /** Latence simulée du transport local (ms). */
+  latencyMs?: number;
+}
+
+export interface DemoRoom<G> {
+  code: string;
+  server: GameServer;
+  /** L'écran partagé (admin), ou `null` si `screen: false`. */
+  screen: GameClient<G> | null;
+  /** Le joueur humain (host de la partie lui aussi). */
+  player: GameClient<G>;
+  /** Arrête tout (connexions et serveur). */
+  close(): void;
+}
+
+/**
+ * Mode démo clé en main : un serveur dans la page, un écran, le joueur humain et des bots.
+ * Rien ne sort du navigateur ; le serveur exécuté est exactement celui de production.
+ *
+ *   const demo = await createDemoRoom({ game: monJeu, player: { name: "Toi" }, bots: 3 });
+ *   <GameProvider client={demo.player}>…</GameProvider>
+ */
+export async function createDemoRoom<G extends AnyGame>(options: DemoRoomOptions<G>): Promise<DemoRoom<G>> {
+  const {
+    game,
+    player: profile,
+    bots = 3,
+    screen: withScreen = true,
+    settings,
+    latencyMs,
+    ...serverOptions
+  } = options;
+  const server = new GameServer({ logger: silentLogger, ...serverOptions, game });
+  const make = () => new GameClient<G>({ transport: localTransport(server, { latencyMs }), storage: null });
+
+  const player = make();
+  let screen: GameClient<G> | null = null;
+  let welcome: Welcome;
+  if (withScreen) {
+    screen = make();
+    const created = await screen.create("screen", { settings });
+    welcome = await player.join(created.code, profile);
+  } else {
+    welcome = await player.create("player", { profile, settings });
+  }
+  const admin = screen ?? player;
+  for (let i = 0; i < bots; i++) await admin.lobby.addBot();
+
+  return {
+    code: welcome.code,
+    server,
+    screen,
+    player,
+    close() {
+      player.close();
+      screen?.close();
+      server.close();
     },
   };
 }

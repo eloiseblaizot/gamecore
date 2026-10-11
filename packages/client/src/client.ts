@@ -271,6 +271,8 @@ export class GameClient<G = AnyGame> {
     role: (role: MemberRole) => this.lobbyOp({ op: "role", role }),
     lock: (locked: boolean) => this.lobbyOp({ op: "lock", locked }),
     end: () => this.lobbyOp({ op: "end" }),
+    /** Ajoute un bot joueur (si le jeu en propose) ; on le retire avec `kick`. */
+    addBot: () => this.lobbyOp({ op: "addBot" }),
   };
 
   /** Entrée de manette temps réel (module « controller ») : sans réponse, perdue si hors ligne. */

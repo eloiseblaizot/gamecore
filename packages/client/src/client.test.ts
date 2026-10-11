@@ -276,3 +276,36 @@ describe("GameClient", () => {
     expect(Math.abs(client.serverNow() - Date.now())).toBeLessThan(1000);
   });
 });
+
+describe("mode démo (createDemoRoom)", () => {
+  it("monte une partie complète dans la page : écran, joueur humain et bots", async () => {
+    const { createDemoRoom } = await import("./local.js");
+    const demo = await createDemoRoom({ game: rps, player: { name: "Toi" }, bots: 2 });
+    await settle();
+    const room = demo.screen!.getState().room!;
+    expect(room.members.map((m) => [m.name, m.provider])).toEqual([
+      ["Toi", "guest"],
+      ["Robot Rouge", "bot"],
+      ["Robot Bleu", "bot"],
+    ]);
+    expect(demo.player.getState().you?.isHost).toBe(true);
+
+    vi.useFakeTimers();
+    await demo.player.lobby.start();
+    await vi.advanceTimersByTimeAsync(1000);
+    await demo.player.act({ type: "choose", choice: "rock" });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(demo.screen!.getState().game?.public.phase).toBe("reveal");
+    demo.close();
+    expect(demo.server.stats().rooms).toBe(0);
+  });
+
+  it("fonctionne aussi sans écran : le joueur crée le salon", async () => {
+    const { createDemoRoom } = await import("./local.js");
+    const demo = await createDemoRoom({ game: rps, player: { name: "Solo" }, bots: 1, screen: false });
+    await settle();
+    expect(demo.screen).toBeNull();
+    expect(demo.player.getState().room?.members).toHaveLength(2);
+    demo.close();
+  });
+});

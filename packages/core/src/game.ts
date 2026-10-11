@@ -15,7 +15,7 @@
 
 import type { z } from "zod";
 import type { Rng } from "./rng.js";
-import type { Actor, PlayerInfo } from "./types.js";
+import type { Actor, GameSnapshot, PlayerInfo } from "./types.js";
 
 /** Destinataires d'un événement éphémère. */
 export type Audience =
@@ -63,6 +63,36 @@ export interface ActionContext<Settings, SystemAction> extends BaseContext<Setti
   requirePlayer(): string;
   /** Refuse si l'action ne vient ni de l'host (joueur, spectateur ou écran admin) ni du système. */
   requireHost(): void;
+}
+
+/** Contexte d'un bot qui réfléchit à son prochain coup. */
+export interface BotContext<Settings> {
+  /** Identifiant du bot (c'est un membre-joueur comme un autre). */
+  readonly botId: string;
+  readonly now: number;
+  /** Hasard propre aux bots : il ne perturbe pas celui de la partie. */
+  readonly random: Rng;
+  readonly settings: Settings;
+  readonly players: readonly PlayerInfo[];
+}
+
+/**
+ * Stratégie des bots d'un jeu (facultative). Les bots sont des joueurs gérés par le serveur :
+ * ils servent au mode démo (une partie complète contre des bots, dans la page) comme à
+ * compléter une vraie partie. Leurs coups passent par `reduce`, comme ceux des humains.
+ */
+export interface BotStrategy<State, Action, Settings, PublicView, PrivateView> {
+  /** Noms proposés pour les bots (sinon une liste par défaut). */
+  readonly names?: readonly string[];
+  /**
+   * Le coup que jouerait ce bot maintenant, ou `null` s'il n'a rien à faire. Il reçoit sa
+   * vue de joueur (exactement ce que verrait un humain à sa place) ET l'état complet : à
+   * toi de choisir ce qu'il a le droit d'exploiter (un bot de quiz peut « connaître » la
+   * réponse une fois sur deux pour simuler un niveau). Doit rester une fonction pure.
+   */
+  decide(view: GameSnapshot<PublicView, PrivateView>, state: State, ctx: BotContext<Settings>): Action | null;
+  /** Délai « humain » avant de jouer ce coup (ms). Par défaut entre 0,8 et 2,5 s. */
+  delay?(action: Action, ctx: BotContext<Settings>): number;
 }
 
 /** Contexte des vues. */
@@ -146,6 +176,9 @@ export interface GameDefinition<
    * Une simple déconnexion n'appelle PAS cette fonction : le joueur peut revenir.
    */
   onPlayerLeave?(draft: State, playerId: string, ctx: ActionContext<Settings, SystemAction>): State | void;
+
+  /** Bots (facultatif) : sans stratégie, on ne peut pas ajouter de bot au salon. */
+  readonly bots?: BotStrategy<State, Action, Settings, PublicView, PrivateView>;
 }
 
 /** Jeu dont on ne connaît pas les types précis (côté serveur, modules…). */

@@ -12,8 +12,10 @@
  */
 
 import {
+  BOT_PROVIDER,
   GameError,
   applyAction,
+  createRng,
   applyPlayerLeave,
   generateToken,
   hashToken,
@@ -23,6 +25,7 @@ import {
   snapshotFor,
   timingSafeEqual,
   uniqueName,
+  type BotContext,
   type AnyGame,
   type ByeReason,
   type ClientMessage,
@@ -63,6 +66,10 @@ export interface RoomOptions {
   game: AnyGame;
   settings: unknown;
   rng: RngState;
+  /** Hasard propre aux bots (séparé de celui de la partie). */
+  botRng?: RngState;
+  /** Nombre max de bots par salon. */
+  maxBots?: number;
   modules: readonly ServerModule[];
   limits: Limits;
   clock: Clock;
@@ -92,7 +99,35 @@ interface Member {
   connectionId: string | null;
   /** Minuteur de libération de la place après une déconnexion (hors partie). */
   graceTimer: unknown;
+  /** Bot géré par le serveur : toujours « connecté », jamais host, sans jeton. */
+  bot: boolean;
 }
+
+/** Noms des bots quand le jeu n'en propose pas. */
+const DEFAULT_BOT_NAMES = [
+  "Mamie Ginette",
+  "Kévin",
+  "Jean-Mi",
+  "Samia",
+  "Toto",
+  "Bernard",
+  "Inès",
+  "Yanis",
+  "Chantal",
+  "Hugo",
+  "Nadia",
+  "Gégé",
+];
+
+/** Type d'une action (`action.type` par convention), pour savoir si un coup prévu tient toujours. */
+function planKey(action: unknown): string {
+  const type =
+    typeof action === "object" && action !== null ? (action as { type?: unknown }).type : undefined;
+  return typeof type === "string" ? type : JSON.stringify(action);
+}
+
+/** Délai par défaut avant qu'un bot joue (ms) : entre 0,8 et 2,5 s. */
+const DEFAULT_BOT_DELAY = (random: () => number) => 800 + random() * 1700;
 
 interface Attachment {
   conn: Connection;
@@ -138,6 +173,9 @@ export class Room {
   private readonly bans = new Set<string>();
   private readonly timers = new Map<string, Timer>();
   private readonly moduleStates = new Map<string, unknown>();
+  /** Coup prévu de chaque bot : minuteur et empreinte de l'action prévue. */
+  private readonly botTimers = new Map<string, { handle: unknown; plan: string }>();
+  private botRng: RngState;
 
   /** Un changement visible attend d'être diffusé (`commit`). */
   private dirty = false;
@@ -152,6 +190,7 @@ export class Room {
     this.game = options.game;
     this.settings = options.settings;
     this.rng = options.rng;
+    this.botRng = options.botRng ?? options.rng;
   }
 
   // --- Lecture ---------------------------------------------------------------
@@ -260,6 +299,7 @@ export class Room {
       joinedAt: this.options.clock.now(),
       connectionId: null,
       graceTimer: null,
+      bot: false,
     };
     this.members.set(member.id, member);
     // Le premier membre devient host ; c'est aussi le cas du créateur d'un salon.
@@ -275,7 +315,7 @@ export class Room {
   async resume(conn: Connection, token: string): Promise<Welcome> {
     const hash = await hashToken(token);
     this.assertAlive();
-    const member = [...this.members.values()].find((m) => timingSafeEqual(m.tokenHash, hash));
+    const member = [...this.members.values()].find((m) => !m.bot && timingSafeEqual(m.tokenHash, hash));
     if (!member) throw new GameError("UNAUTHORIZED", "Ta session a expiré : rejoins le salon à nouveau.");
     this.attachMember(conn, member);
     this.commit();
@@ -360,6 +400,7 @@ export class Room {
     if (this.disposed) return;
     this.disposed = true;
     this.clearTimers();
+    this.clearBots();
     for (const member of this.members.values()) this.clearGrace(member);
     for (const [id, att] of this.attachments) {
       this.send(att, { t: "bye", reason });
@@ -436,7 +477,44 @@ export class Room {
         if (this.status_ === "lobby") throw new GameError("BAD_REQUEST", "Aucune partie à arrêter.");
         this.backToLobby();
         return;
+
+      case "addBot":
+        this.requireHost(att);
+        this.addBot();
+        return;
     }
+  }
+
+  /** Ajoute un bot joueur (il se retire comme n'importe qui : `kick`). */
+  private addBot(): void {
+    const strategy = this.game.bots;
+    if (!strategy) throw new GameError("MODULE_DISABLED", "Ce jeu ne propose pas de bots.");
+    if (this.status_ === "playing")
+      throw new GameError("GAME_RUNNING", "Ajoute les bots entre deux parties.");
+    const bots = [...this.members.values()].filter((m) => m.bot);
+    if (bots.length >= (this.options.maxBots ?? 8))
+      throw new GameError("ROOM_FULL", "Il y a déjà assez de bots.");
+    if (this.playerCount() >= this.game.maxPlayers || this.members.size >= this.options.limits.maxMembers) {
+      throw new GameError("ROOM_FULL", "Plus de place parmi les joueurs.");
+    }
+    const taken = [...this.members.values()].map((m) => m.name);
+    const names = strategy.names?.length ? strategy.names : DEFAULT_BOT_NAMES;
+    const free = names.find((n) => !taken.includes(n)) ?? names[bots.length % names.length]!;
+    const member: Member = {
+      id: `b_${generateToken(9)}`,
+      name: uniqueName(free, taken),
+      avatar: "🤖",
+      role: "player",
+      provider: BOT_PROVIDER,
+      externalId: null,
+      tokenHash: "",
+      joinedAt: this.options.clock.now(),
+      connectionId: null,
+      graceTimer: null,
+      bot: true,
+    };
+    this.members.set(member.id, member);
+    this.dirty = true;
   }
 
   /** Lance une partie (ou une revanche) avec les joueurs présents. */
@@ -450,6 +528,7 @@ export class Room {
       throw new GameError("RULE", `${this.game.maxPlayers} joueurs maximum : passe quelqu'un en spectateur.`);
     }
     this.clearTimers();
+    this.clearBots();
     for (const p of players) this.clearGrace(p);
     const playerIds = players.map((p) => p.id);
     const res = setupGame(this.game, this.engineInput(playerIds));
@@ -465,9 +544,10 @@ export class Room {
 
   private backToLobby(): void {
     this.clearTimers();
+    this.clearBots();
     this.running = null;
     this.status_ = "lobby";
-    for (const m of this.members.values()) if (m.connectionId === null) this.startGrace(m);
+    for (const m of this.members.values()) if (m.connectionId === null && !m.bot) this.startGrace(m);
     this.dirty = true;
   }
 
@@ -570,6 +650,7 @@ export class Room {
     if (this.running && this.game.isOver?.(this.running.state)) {
       this.status_ = "finished";
       this.clearTimers();
+      this.clearBots();
       this.options.logger.info("partie terminée", { room: this.code });
     }
   }
@@ -606,9 +687,119 @@ export class Room {
     const players: PlayerInfo[] = [];
     for (const id of playerIds) {
       const m = this.members.get(id);
-      if (m) players.push({ id: m.id, name: m.name, avatar: m.avatar, connected: m.connectionId !== null });
+      if (m)
+        players.push({
+          id: m.id,
+          name: m.name,
+          avatar: m.avatar,
+          connected: m.bot || m.connectionId !== null,
+        });
     }
     return players;
+  }
+
+  // --- Bots ------------------------------------------------------------------------
+
+  /**
+   * Planifie le prochain coup de chaque bot de la partie. Appelé après chaque changement.
+   * Un coup prévu garde son minuteur tant que le bot veut jouer le même TYPE d'action (sinon
+   * un bot qui tire ses coups au hasard serait sans cesse repoussé par les coups des
+   * autres) ; le coup exact est recalculé au moment de jouer.
+   */
+  private scheduleBots(): void {
+    const running = this.running;
+    if (!this.game.bots || !running || this.status_ !== "playing" || this.disposed) {
+      this.clearBots();
+      return;
+    }
+    for (const botId of running.playerIds) {
+      const member = this.members.get(botId);
+      if (!member?.bot) continue;
+      const action = this.botDecision(botId);
+      const current = this.botTimers.get(botId);
+      if (action === null) {
+        if (current) this.options.clock.clearTimeout(current.handle);
+        this.botTimers.delete(botId);
+        continue;
+      }
+      const plan = planKey(action);
+      if (current?.plan === plan) continue;
+      if (current) this.options.clock.clearTimeout(current.handle);
+      const ctx = this.botContext(botId);
+      const delay = this.game.bots.delay?.(action, ctx) ?? DEFAULT_BOT_DELAY(() => ctx.random.next());
+      this.botRng = ctx.random.state();
+      const handle = this.options.clock.setTimeout(() => this.fireBot(botId), Math.max(0, delay));
+      this.botTimers.set(botId, { handle, plan });
+    }
+  }
+
+  /** Le bot joue : son coup est recalculé (la partie a pu avancer) puis validé comme celui d'un humain. */
+  private fireBot(botId: string): void {
+    this.botTimers.delete(botId);
+    const running = this.running;
+    if (!running || this.status_ !== "playing" || this.disposed || !this.members.get(botId)?.bot) return;
+    try {
+      const action = this.botDecision(botId);
+      if (action === null) return;
+      const parsed = parseClientAction(this.game, action);
+      if (!parsed.ok) {
+        this.options.logger.error("coup de bot hors du schéma des actions", {
+          room: this.code,
+          game: this.game.id,
+        });
+        return;
+      }
+      const actor = { kind: "player" as const, id: botId, isHost: false };
+      const res = applyAction(
+        this.game,
+        running.state,
+        parsed.action,
+        actor,
+        this.engineInput(running.playerIds),
+      );
+      this.commitGame(res, "bot");
+    } catch (err) {
+      // Un coup refusé (« trop tard ») est normal ; une erreur du jeu est déjà journalisée.
+      if (!(err instanceof GameError)) {
+        this.options.logger.error("erreur au tour d'un bot", { room: this.code, cause: String(err) });
+      }
+    } finally {
+      this.commit();
+    }
+  }
+
+  /** Ce que ferait ce bot maintenant (`null` en cas d'erreur dans la stratégie du jeu). */
+  private botDecision(botId: string): unknown {
+    const running = this.running;
+    const strategy = this.game.bots;
+    if (!running || !strategy) return null;
+    const viewer = { kind: "player" as const, id: botId, isHost: false };
+    const ctx = this.botContext(botId);
+    try {
+      const viewCtx = { now: ctx.now, settings: this.settings, players: ctx.players };
+      const view = snapshotFor(this.game, running.state, viewer, viewCtx);
+      const action = strategy.decide(view, running.state, ctx) as unknown;
+      this.botRng = ctx.random.state();
+      return action ?? null;
+    } catch (err) {
+      this.options.logger.error("erreur dans la stratégie des bots", { room: this.code, cause: String(err) });
+      return null;
+    }
+  }
+
+  private botContext(botId: string): BotContext<unknown> {
+    return {
+      botId,
+      now: this.options.clock.now(),
+      random: createRng(this.botRng),
+      settings: this.settings,
+      players: this.playersOf(this.running?.playerIds ?? []),
+    };
+  }
+
+  private clearBots(): void {
+    for (const { handle } of this.botTimers.values()) this.options.clock.clearTimeout(handle);
+    this.botTimers.clear();
   }
 
   // --- Membres ---------------------------------------------------------------------
@@ -668,7 +859,8 @@ export class Room {
 
   /** Nouvel host : le plus ancien joueur connecté, à défaut le plus ancien membre connecté. */
   private pickNewHost(): string | null {
-    const all = [...this.members.values()];
+    // Un bot n'est jamais host : sans humain, le salon n'a plus d'host.
+    const all = [...this.members.values()].filter((m) => !m.bot);
     const connected = all.filter((m) => m.connectionId !== null);
     return (connected.find((m) => m.role === "player") ?? connected[0] ?? all[0])?.id ?? null;
   }
@@ -701,7 +893,7 @@ export class Room {
       name: m.name,
       avatar: m.avatar,
       role: m.role,
-      connected: m.connectionId !== null,
+      connected: m.bot || m.connectionId !== null,
       isHost: m.id === this.hostId_,
       provider: m.provider,
     };
@@ -787,6 +979,7 @@ export class Room {
     if (this.dirty) {
       this.dirty = false;
       this.version++;
+      this.scheduleBots();
       const room = this.info();
       const viewCtx = { now: this.options.clock.now(), settings: this.settings, players: [] as PlayerInfo[] };
       let publicView: unknown;

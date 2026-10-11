@@ -9,7 +9,15 @@ export type RoomStatus = "lobby" | "playing" | "finished";
 export type MemberRole = "player" | "spectator";
 
 /** Origine de l'identité d'un membre : invité (pseudo libre) ou fournisseur vérifié. */
-export type IdentityProvider = "guest" | "discord" | (string & {});
+export type IdentityProvider = "guest" | "bot" | "discord" | (string & {});
+
+/** Fournisseur d'identité des bots gérés par le serveur. */
+export const BOT_PROVIDER = "bot";
+
+/** Ce membre est-il un bot ? */
+export function isBot(member: { provider: IdentityProvider }): boolean {
+  return member.provider === BOT_PROVIDER;
+}
 
 /** Ce qu'un membre choisit pour se présenter. */
 export interface Profile {

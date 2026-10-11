@@ -78,6 +78,8 @@ export const lobbyOpSchema = z.discriminatedUnion("op", [
   z.strictObject({ op: z.literal("lock"), locked: z.boolean() }),
   /** Arrêter la partie et revenir au salon d'attente. */
   z.strictObject({ op: z.literal("end") }),
+  /** Ajouter un bot (si le jeu en propose), dans le salon d'attente. */
+  z.strictObject({ op: z.literal("addBot") }),
 ]);
 
 export type LobbyOp = z.infer<typeof lobbyOpSchema>;

@@ -116,6 +116,16 @@ export const rps = defineGame({
 
   isOver: (s) => s.phase === "over",
 
+  // Bots honnêtes : ils ne regardent que leur vue (pas les choix secrets des autres).
+  bots: {
+    names: ["Robot Rouge", "Robot Bleu"],
+    decide: (view, _state, ctx) =>
+      view.public.phase === "choosing" && view.private?.myChoice === null
+        ? { type: "choose" as const, choice: ctx.random.pick(CHOICES) }
+        : null,
+    delay: () => 1000,
+  },
+
   onPlayerLeave(s, playerId, ctx) {
     delete s.choices[playerId];
     delete s.scores[playerId];
