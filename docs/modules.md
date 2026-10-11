@@ -14,7 +14,8 @@ session), d'autres s'ajoutent au serveur (`modules: [...]`) ou côté interface.
 | Transport local               | `@gamecore/client/local`                                   | Serveur dans la page : mode démo, tests                      |
 | Transport PartyKit            | 🔜                                                         | Cloudflare Durable Objects                                   |
 | Discord (connexion, Activity) | `@gamecore/discord` — voir [discord.md](discord.md)        | Identité vérifiée, jeu lancé dans un salon vocal Discord     |
-| Bots, son, vidéo              | 🔜                                                         | Repris de DCDS                                               |
+| Bots et mode démo             | stratégie `bots` du jeu + `createDemoRoom`                 | Joueurs gérés par le serveur ; partie complète dans la page  |
+| Son, vidéo                    | 🔜                                                         | Repris de DCDS                                               |
 
 ## Salon à code
 
@@ -106,6 +107,33 @@ Côté interface : `const { messages, send } = useChat()`.
 
 Un transport ne fait que transporter du texte : `GameServer.connect`, `receive`, `disconnect` côté serveur ;
 l'interface `ClientTransport` (`connect`, `send`, `close`) côté client. Toute la sécurité est commune.
+
+## Bots et mode démo
+
+Un jeu qui déclare une stratégie `bots` (voir [Créer un jeu](creer-un-jeu.md#bots)) permet à l'host d'ajouter des
+bots au salon (`client.lobby.addBot()`, retirés avec `kick`). Ce sont des **joueurs gérés par le serveur** :
+
+- toujours « connectés », jamais host, sans jeton (un salon sans humain n'est pas gardé en vie) ;
+- leurs coups passent par `reduce` et le schéma des actions, exactement comme ceux des humains ;
+- chaque coup est joué après un délai « humain » ; un coup prévu tient tant que le bot veut jouer le même type
+  d'action, et il est recalculé au moment de jouer ;
+- leur hasard est séparé de celui de la partie : une même graine rejoue la même partie, bots compris ;
+- `maxBotsPerRoom` (8 par défaut) borne leur nombre.
+
+Le **mode démo** fait tourner le serveur dans la page (transport local) avec des bots : une partie complète sans
+réseau, avec exactement le serveur de production.
+
+```ts
+import { createDemoRoom } from "@gamecore/client/local";
+
+const demo = await createDemoRoom({ game: monJeu, player: { name: "Toi" }, bots: 3 });
+// demo.screen : écran partagé (admin) ; demo.player : le joueur humain (host lui aussi)
+// <GameProvider client={demo.player}>…</GameProvider> ; demo.close() à la sortie
+```
+
+⚠️ En mode démo, le jeu et ses données sont téléchargés par le navigateur : n'y mets pas de secret du mode en ligne.
+Le Buzzer utilise une banque de questions distincte pour sa démo, chargée à la demande (`import("./demo.js")`), et un
+test de bout en bout vérifie qu'aucun fichier JavaScript servi ne contient les réponses du mode en ligne.
 
 ## Écrire un module serveur
 

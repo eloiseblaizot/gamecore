@@ -107,6 +107,26 @@ export const monJeu = defineGame({
    ignoré.
 5. **Les données secrètes du jeu ne vont jamais dans le navigateur** : importe le jeu en `import type` côté client.
 
+### Bots
+
+Facultatif : une stratégie permet d'ajouter des bots (mode démo, ou compléter une vraie partie).
+
+```ts
+bots: {
+  names: ["Robot Rouge", "Robot Bleu"],
+  // Sa vue de joueur (ce que verrait un humain) ET l'état complet : à toi de choisir ce qu'il exploite.
+  decide(vue, etat, ctx) {
+    if (vue.public.phase !== "jeu" || vue.private?.aJoue) return null; // rien à faire
+    return { type: "jouer" as const, carte: ctx.random.pick(vue.private!.main) };
+  },
+  delay: (action, ctx) => 800 + ctx.random.next() * 2000, // délai « humain » (ms)
+},
+```
+
+`decide` doit rester pure et utiliser `ctx.random` ; renvoie les littéraux avec `as const` (sinon TypeScript élargit
+`"jouer"` en `string`). Voir les bots du Buzzer dans [`game.ts`](../examples/buzzer/src/game.ts) et le
+[mode démo](modules.md#bots-et-mode-démo).
+
 ## 2. Tester les règles
 
 Les outils de `@gamecore/server/testing` font tourner le VRAI serveur, sans réseau :

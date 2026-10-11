@@ -22,6 +22,14 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 - Buzzer : bouton « Se connecter avec Discord », mode Activity, configuration publique, CSP adaptée.
 - E2E face à un faux Discord local. Voir [discord.md](discord.md).
 
+## ✅ Itération 3 — Bots et mode démo (octobre 2026)
+
+- Stratégie `bots` dans `defineGame`, bots membres-joueurs gérés par le serveur (ajout par l'host, délai humain,
+  hasard séparé, coups validés comme ceux des humains).
+- `createDemoRoom` : partie complète dans la page (transport local), écran + joueur + bots.
+- Buzzer : bots qui « connaissent » la réponse 6 fois sur 10, page `/demo` (écran et téléphone côte à côte, aucune
+  connexion réseau), bouton « Ajouter un bot » en ligne, banque de questions distincte pour la démo.
+
 ## 🔜 Prochaines itérations
 
 ### PartyKit (Cloudflare)
@@ -38,8 +46,6 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 
 ### Reprises de DCDS
 
-- **Bots et mode démo** : bots pilotés par une fonction pure par jeu, partie complète dans le navigateur (transport
-  local), panneau de démo.
 - **Son** : moteur Web Audio synthétisé (aucun fichier, libre de droits pour les streams), ambiances, bruitages,
   atténuation quand quelqu'un parle, réglages mémorisés.
 - **Vidéo et audio** (LiveKit) : jetons délivrés par le serveur aux seuls membres, publication selon le rôle et les

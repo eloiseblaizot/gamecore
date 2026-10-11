@@ -5,16 +5,17 @@ sur **son téléphone** devenu buzzer. Plus on répond vite, plus on marque de p
 
 Il sert de démonstration complète du moteur :
 
-| Fonctionnalité                      | Où regarder                                                                                          |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Règles en fonctions pures, testées  | [`src/game.ts`](src/game.ts), [`src/game.test.ts`](src/game.test.ts)                                 |
-| Salon à code + QR code              | [`src/screens/HostScreen.tsx`](src/screens/HostScreen.tsx) (`JoinQrCode`)                            |
-| Écran de l'hôte (vue publique)      | [`src/screens/HostScreen.tsx`](src/screens/HostScreen.tsx)                                           |
-| Téléphone-manette (vue privée)      | [`src/screens/Phone.tsx`](src/screens/Phone.tsx) (`ControllerButton`, `useWakeLock`)                 |
-| Module manettes (réactions → écran) | [`src/reactions.ts`](src/reactions.ts), `controllerModule` dans [`server/index.ts`](server/index.ts) |
-| Chrono calé sur l'heure du serveur  | [`src/ui/Countdown.tsx`](src/ui/Countdown.tsx) (`useCountdown`)                                      |
-| Reprise après rechargement          | [`src/useEnterRoom.ts`](src/useEnterRoom.ts)                                                         |
-| Serveur Node durci (CSP, origines…) | [`server/index.ts`](server/index.ts), [`server/http.ts`](server/http.ts)                             |
+| Fonctionnalité                          | Où regarder                                                                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Règles en fonctions pures, testées      | [`src/game.ts`](src/game.ts), [`src/game.test.ts`](src/game.test.ts)                                                   |
+| Salon à code + QR code                  | [`src/screens/HostScreen.tsx`](src/screens/HostScreen.tsx) (`JoinQrCode`)                                              |
+| Écran de l'hôte (vue publique)          | [`src/screens/HostScreen.tsx`](src/screens/HostScreen.tsx)                                                             |
+| Téléphone-manette (vue privée)          | [`src/screens/Phone.tsx`](src/screens/Phone.tsx) (`ControllerButton`, `useWakeLock`)                                   |
+| Module manettes (réactions → écran)     | [`src/reactions.ts`](src/reactions.ts), `controllerModule` dans [`server/index.ts`](server/index.ts)                   |
+| Chrono calé sur l'heure du serveur      | [`src/ui/Countdown.tsx`](src/ui/Countdown.tsx) (`useCountdown`)                                                        |
+| Reprise après rechargement              | [`src/useEnterRoom.ts`](src/useEnterRoom.ts)                                                                           |
+| Bots et mode démo (partie dans la page) | `bots` dans [`src/game.ts`](src/game.ts), [`src/demo.ts`](src/demo.ts), [`src/screens/Demo.tsx`](src/screens/Demo.tsx) |
+| Serveur Node durci (CSP, origines…)     | [`server/index.ts`](server/index.ts), [`server/http.ts`](server/http.ts)                                               |
 
 ## Lancer
 
@@ -33,6 +34,9 @@ ALLOWED_ORIGINS=http://192.168.1.42:5173 pnpm dev:buzzer --host   # remplace par
 ```
 
 puis ouvre `http://192.168.1.42:5173` sur l'ordinateur qui sert d'écran : le QR code pointera vers cette adresse.
+
+Sans serveur du tout : ouvre <http://localhost:5173/demo> (« Essayer en solo contre des bots » sur l'accueil) — la
+partie tourne entièrement dans le navigateur, contre des bots.
 
 En mode production (build puis un seul serveur qui sert l'application et les WebSockets) :
 
