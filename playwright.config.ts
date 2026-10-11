@@ -4,9 +4,12 @@ import { defineConfig, devices } from "@playwright/test";
  * Tests de bout en bout : le jeu d'exemple est construit puis servi exactement comme en
  * production (un seul serveur Node : application + WebSockets), et piloté par de vrais
  * navigateurs — un écran d'hôte sur « PC » et des joueurs sur « téléphones » émulés.
+ * L'exemple de simulation (`examples/sim-playground`) est construit et servi à part.
  */
 const PORT = 4173;
 const FAKE_DISCORD_PORT = 4174;
+/** Exemple @gamecore/sim (application statique servie par `vite preview`). */
+const SIM_PLAYGROUND_PORT = 4175;
 const CI = Boolean(process.env.CI);
 
 export default defineConfig({
@@ -66,6 +69,14 @@ export default defineConfig({
           LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET ?? "",
         }),
       },
+    },
+    {
+      command:
+        "pnpm --filter @gamecore/example-sim-playground build && pnpm --filter @gamecore/example-sim-playground preview",
+      url: `http://localhost:${SIM_PLAYGROUND_PORT}`,
+      reuseExistingServer: !CI,
+      timeout: 120_000,
+      env: { PORT: String(SIM_PLAYGROUND_PORT) },
     },
   ],
 });
