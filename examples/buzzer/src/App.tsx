@@ -1,3 +1,4 @@
+import { SoundControls } from "@gamecore/audio/react";
 import { isDiscordActivity } from "@gamecore/discord/client";
 import { Suspense } from "react";
 import { useRoute } from "./router.js";
@@ -38,6 +39,7 @@ export function App() {
       }
     >
       <Pages />
+      <SoundControls className="sound-controls" />
     </Suspense>
   );
 }

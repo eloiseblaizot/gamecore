@@ -804,6 +804,67 @@ select {
   max-width: 420px;
 }
 
+/* --- Réglages du son (composant SoundControls de @gamecore/audio) ---------- */
+
+.sound-controls {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+  z-index: 20;
+}
+
+.gc-sound-toggle {
+  border: 0;
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.gc-sound-panel {
+  position: absolute;
+  right: 0;
+  top: 52px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.gc-sound-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.gc-sound-slider input {
+  accent-color: var(--accent-2);
+}
+
+.gc-sound-mute {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.gc-sound-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* --- Mode démo ------------------------------------------------------------- */
 
 .demo {
@@ -820,7 +881,8 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 16px;
+  /* À droite : la place du bouton de réglage du son (position fixe). */
+  padding: 8px 68px 8px 16px;
   background: rgba(0, 0, 0, 0.3);
 }
 

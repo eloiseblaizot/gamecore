@@ -27,6 +27,7 @@ import { Avatar } from "../ui/Avatar.js";
 import { CHOICE_STYLES } from "../ui/choices.js";
 import { Countdown } from "../ui/Countdown.js";
 import { ConnectionBanner, Notice } from "../ui/Notice.js";
+import { usePhoneSounds } from "../sounds.js";
 import { enterErrorTitle, useEnterRoom } from "../useEnterRoom.js";
 
 const AVATARS = ["🦊", "🐼", "🐸", "🦄", "🐙", "🐯", "🐧", "🦖", "🐝", "🦉", "🐶", "🐱"];
@@ -36,6 +37,7 @@ export function Phone({ code }: { code: string }) {
   const status = useConnectionStatus();
   const room = useRoom<Buzzer>();
   const bye = useClientState((s) => s.bye);
+  usePhoneSounds(useGame<Buzzer>()?.private);
   // L'écran reste allumé pendant toute la partie.
   useWakeLock(enter.status === "ready");
 

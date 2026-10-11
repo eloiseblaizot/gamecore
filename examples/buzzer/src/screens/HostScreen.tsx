@@ -22,6 +22,7 @@ import { Avatar } from "../ui/Avatar.js";
 import { CHOICE_STYLES } from "../ui/choices.js";
 import { Countdown } from "../ui/Countdown.js";
 import { ConnectionBanner, Notice } from "../ui/Notice.js";
+import { useScreenSounds } from "../sounds.js";
 import { enterErrorTitle, useEnterRoom } from "../useEnterRoom.js";
 
 /** `demo` : partie locale contre des bots (pas de QR code : personne ne peut la rejoindre). */
@@ -30,6 +31,8 @@ export function HostScreen({ code, demo = false }: { code: string; demo?: boolea
   const status = useConnectionStatus();
   const room = useRoom<Buzzer>();
   const bye = useClientState((s) => s.bye);
+  const game = useGame<Buzzer>();
+  useScreenSounds(room, game?.public ?? null);
 
   if (enter.status === "error")
     return <Notice title={enterErrorTitle(enter.error)}>{enter.error.message}</Notice>;

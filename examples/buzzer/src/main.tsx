@@ -7,10 +7,12 @@
 
 import { GameClient } from "@gamecore/client";
 import { socketIoTransport } from "@gamecore/client/socket-io";
+import { AudioProvider } from "@gamecore/audio/react";
 import { GameProvider } from "@gamecore/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
+import { audio } from "./audio.js";
 import { API_PREFIX } from "./config.js";
 import type { Buzzer } from "./game.js";
 import "./styles.css";
@@ -23,8 +25,10 @@ const client = new GameClient<Buzzer>({
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <GameProvider client={client}>
-      <App />
-    </GameProvider>
+    <AudioProvider engine={audio} clickSelector=".btn">
+      <GameProvider client={client}>
+        <App />
+      </GameProvider>
+    </AudioProvider>
   </StrictMode>,
 );
