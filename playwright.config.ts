@@ -24,7 +24,17 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Fausse caméra et faux micro, autorisés sans fenêtre de confirmation : les webcams se
+        // testent sans matériel.
+        launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+      },
+    },
+  ],
   webServer: [
     {
       // Faux Discord (OAuth2 et API) : la connexion Discord se teste sans Internet.
@@ -49,6 +59,12 @@ export default defineConfig({
         DISCORD_REDIRECT_URI: `http://localhost:${PORT}/auth/discord`,
         DISCORD_API_BASE: `http://localhost:${FAKE_DISCORD_PORT}/api/v10`,
         DISCORD_AUTHORIZE_URL: `http://localhost:${FAKE_DISCORD_PORT}/oauth2/authorize`,
+        // Vrai serveur LiveKit (CI) : transmis seulement s'il est configuré.
+        ...(process.env.LIVEKIT_URL && {
+          LIVEKIT_URL: process.env.LIVEKIT_URL,
+          LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY ?? "",
+          LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET ?? "",
+        }),
       },
     },
   ],

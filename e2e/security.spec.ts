@@ -92,7 +92,11 @@ test("les pages sont servies avec des en-têtes de sécurité stricts", async ({
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["referrer-policy"]).toBe("no-referrer");
   expect(headers["x-frame-options"]).toBe("DENY");
-  expect(headers["permissions-policy"]).toContain("camera=()");
+  // Caméra et micro : pour la page elle-même seulement (webcams des joueurs), jamais pour un tiers.
+  expect(headers["permissions-policy"]).toContain("camera=(self)");
+  expect(headers["permissions-policy"]).toContain("microphone=(self)");
+  expect(headers["permissions-policy"]).toContain("geolocation=()");
+  expect(headers["content-security-policy"]).toContain("connect-src 'self'");
 });
 
 test("le serveur ne sert aucun fichier hors de l'application", async ({ request }) => {
