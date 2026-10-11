@@ -52,7 +52,27 @@ interchangeable ».
   contenu), `Map` et `Set` dans l'ordre d'insertion. Le hash d'une simulation couvre aussi le tick, l'état du RNG et
   les commandes système programmées.
 - **Sauvegardes non fiables** : un fichier chargé peut venir de n'importe où ; en-tête, réglages, journal et commandes
-  programmées sont revalidés (zod) et la taille est bornée. La graine est conservée pour permettre le rejeu.
+  programmées sont revalidés (zod) et la taille est bornée. La graine est conservée pour permettre le rejeu. Le hash
+  de l'état rechargé est comparé à celui du fichier (fichier altéré ou codec infidèle), sauf après une migration.
+- **Migrations et journal** : une sauvegarde migrée perd son journal (ses commandes suivaient des règles antérieures) ;
+  les réglages sont fusionnés avec les valeurs par défaut actuelles. Les commandes système programmées sont conservées
+  et doivent rester valides pour le schéma courant.
+- **Réglages gelés** (`Object.freeze` en profondeur) : ils sont sauvegardés à part et le rejeu en dépend.
+- **Commandes système** : une seule par clé, exécutées à échéance égale dans l'ordre de programmation ; elles ne sont
+  pas journalisées (elles découlent du journal de l'hôte et de la graine).
+- **Retard du cadenceur** : au-delà de `maxTicksPerFrame`, la dette de ticks est abandonnée et signalée (`onLag`)
+  plutôt que rattrapée : la vitesse réelle baisse, la page ne gèle pas. L'accumulateur compte en « ms × ticks/s »
+  pour rester exact avec une horloge entière.
+- **Protocole** : discriminant `t` (comme le protocole de `@gamecore/core`), requêtes corrélées par `id`, un message
+  `events` après chaque rafale même vide (il porte le tick et la cadence réelle). Port structurel
+  `{ postMessage(message, { transfer }), onmessage }` : la forme « options » de `postMessage` est commune à `Worker`,
+  `MessagePort` et au `self` d'un Worker.
+- **`localPort()` clone les messages** (`structuredClone` avec transfert) : une donnée non clonable échoue en test
+  comme dans un vrai Worker. Ce clonage est celui du transport, hors de la boucle de tick.
+- **`expectDeterministic`** compare deux exécutions en parallèle, dont l'une passe par une sauvegarde rechargée, puis
+  rejoue le journal ; il piège `Math.random`, `Date.now` et `new Date()` pendant l'exécution.
+- **Ordre de livraison** : la sauvegarde (étape 7 du plan initial) a été réalisée avant le protocole Worker (étape 6),
+  dont les messages `save` et `load` dépendent.
 
 ## Conséquences
 
