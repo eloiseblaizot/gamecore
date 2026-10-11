@@ -35,17 +35,49 @@ flowchart LR
 - **Le transport est interchangeable** : le même serveur tourne derrière Socket.io (Node), PartyKit (Cloudflare) ou
   directement dans la page (mode démo). Voir [ADR 0003](adr/0003-transports-interchangeables.md).
 
+## Deux moteurs
+
+gamecore propose deux façons d'écrire les règles d'un jeu, qui partagent le hasard SFC32, zod et `GameError` :
+
+- **`defineGame`** (`@gamecore/core`) pour les jeux à tours et les quiz : petit état **copié** à chaque action, vues
+  par destinataire, hébergé par une `Room` autoritaire (tout ce qui précède et suit sur cette page).
+- **`defineSimulation`** (`@gamecore/sim`) pour les jeux qui **avancent seuls** (écosystème, ville, gestion) : gros
+  état **mutable** à tick fixe, commandes validées puis journalisées, systèmes ordonnés, canaux de snapshot publiés
+  quand ils changent, sauvegarde binaire et rejeu déterministes. Voir [simulation.md](simulation.md) et
+  l'[ADR 0004](adr/0004-moteur-de-simulation-continue.md).
+
+```mermaid
+flowchart LR
+  subgraph Page
+    UI[Interface] <--> RS["RemoteSim<br/>(connectSimulation)"]
+  end
+  subgraph W["Web Worker (ou localPort dans la page)"]
+    EX[exposeSimulation] --> RU["Cadenceur<br/>(createRunner)"] --> SIM["Sim<br/>file · journal · RNG"]
+    SIM --> SY["Systèmes<br/>(dans l'ordre, every)"]
+    SIM --> CH["Canaux<br/>(invalidés, échus)"]
+  end
+  RS -->|commandes| EX
+  CH -->|"canaux, événements<br/>(TypedArray transférées)"| RS
+```
+
+La simulation peut aussi tourner directement en mémoire (`createSimulation`, tests et outils). Son hébergement dans
+une `Room` (mode multijoueur) est prévu dans la [feuille de route](feuille-de-route.md).
+
 ## Les paquets
 
-| Paquet             | Rôle                                                                                                                    | Dépend de               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `@gamecore/core`   | `defineGame`, moteur pur (`applyAction`…), hasard déterministe, codes et jetons, protocole (zod), nettoyage des saisies | `zod`                   |
-| `@gamecore/server` | `GameServer` (sécurité, routage), `Room` (salon), modules, adaptateur Socket.io, outils de test                         | `core`                  |
-| `@gamecore/client` | `GameClient` (état, requêtes, reprise de session), transports Socket.io et local                                        | `core`                  |
-| `@gamecore/react`  | `GameProvider`, hooks, `JoinQrCode`, `ControllerButton`, `Joystick`, `useWakeLock`                                      | `client`, `core`, `uqr` |
+| Paquet              | Rôle                                                                                                                    | Dépend de                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `@gamecore/core`    | `defineGame`, moteur pur (`applyAction`…), hasard déterministe, codes et jetons, protocole (zod), nettoyage des saisies | `zod`                              |
+| `@gamecore/server`  | `GameServer` (sécurité, routage), `Room` (salon), modules, adaptateur Socket.io, outils de test                         | `core`                             |
+| `@gamecore/client`  | `GameClient` (état, requêtes, reprise de session), transports Socket.io et local                                        | `core`                             |
+| `@gamecore/react`   | `GameProvider`, hooks, `JoinQrCode`, `ControllerButton`, `Joystick`, `useWakeLock`                                      | `client`, `core`, `uqr`            |
+| `@gamecore/audio`   | Son synthétisé (Web Audio) : instruments, bruitages, ambiances, réglages, liaisons React                                | (`react` facultatif)               |
+| `@gamecore/livekit` | Vidéo et audio en direct : jetons délivrés par le salon, fournisseur React, tuiles, détection de parole                 | `core`, `server`, `react`, LiveKit |
+| `@gamecore/discord` | Connexion OAuth2 PKCE, vérification d'identité, Discord Activity, Rich Presence                                         | `core`, `server`, SDK Discord      |
+| `@gamecore/sim`     | Simulation continue : `defineSimulation`, hôte en mémoire, cadenceur, Worker, sauvegarde GCSIM, rejeu, outils de test   | `core`, `zod`                      |
 
-Tous sont isomorphes sauf mention contraire : `core`, `server` (hors `socket-io`) et `client` tournent dans un
-navigateur, sous Node et sous Cloudflare Workers. Ils n'utilisent que des API standard (Web Crypto, `TextEncoder`,
+Tous sont isomorphes sauf mention contraire : `core`, `server` (hors `socket-io`), `client` et `sim` tournent dans un
+navigateur, sous Node et sous Cloudflare Workers (`sim` aussi dans un Web Worker, sans aucune API du DOM). Ils n'utilisent que des API standard (Web Crypto, `TextEncoder`,
 `structuredClone`, `Intl.Segmenter`).
 
 ## Le salon

@@ -21,11 +21,16 @@ Trois niveaux, tous lancés en CI à chaque poussée.
   `vi.advanceTimersByTimeAsync()` : le runtime n'appelle jamais `setTimeout` en direct.
 - Un jeu se teste avec le **vrai serveur** grâce à `@gamecore/server/testing` (voir
   [Créer un jeu](creer-un-jeu.md#2-tester-les-règles)).
+- Une simulation (`@gamecore/sim`) se teste en mémoire (`createSimulation`, `step`, `drain`), et
+  `@gamecore/sim/testing` fournit `expectDeterministic` (deux exécutions comparées, dont une sauvegardée puis
+  rechargée, puis rejeu du journal ; premier tick divergent), `benchmark` (p50/p95 par système) et `createFakeClock`
+  pour le cadenceur. L'exemple vérifie 10 000 ticks. Voir [simulation.md](simulation.md#tests-de-déterminisme-et-de-performance).
 
 ## Tests de bout en bout
 
 [`playwright.config.ts`](../playwright.config.ts) construit le jeu d'exemple et le sert comme en production (un seul
-serveur Node sur le port 4173, application + WebSockets), puis :
+serveur Node sur le port 4173, application + WebSockets) ; il construit aussi l'exemple de simulation et le sert avec
+`vite preview` (port 4175). Puis :
 
 - un **écran d'hôte** dans un contexte « PC » (1280×800) ;
 - des **joueurs** dans des contextes « téléphone » (`Pixel 7` : écran mobile, tactile, agent utilisateur Android),
@@ -48,6 +53,9 @@ image par image ; en CI, elle est attachée à l'exécution.
 - Rechargement d'un téléphone en pleine partie (place et points conservés), rechargement de l'écran (droits d'host).
 - Expulsion (le joueur est informé, son jeton ne fonctionne plus).
 - Lancement depuis le téléphone du premier joueur ; code inconnu ou mal formé ; réactions vers l'écran ; jeu au clavier.
+- Simulation « Renards et lapins » dans un vrai Web Worker : les ticks avancent, la pause fige, le pas à pas avance
+  d'un tick, une sauvegarde téléchargée puis rechargée ramène au tick sauvegardé, un fichier quelconque est refusé, le
+  rejeu affiche deux hashs égaux, le mode sans Worker fonctionne (`e2e/sim-playground.spec.ts`).
 
 ### Sécurité vérifiée de bout en bout
 

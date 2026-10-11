@@ -52,7 +52,27 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 - Buzzer : présence calculée par une fonction pure (information publique uniquement), bouton « Inviter des amis ».
   Voir [discord.md](discord.md#rich-presence-et-invitations-activity).
 
+## ✅ Itération 7 — Simulation continue (octobre 2026)
+
+- Second moteur `@gamecore/sim`, à côté de `defineGame` (voir l'[ADR 0004](adr/0004-moteur-de-simulation-continue.md)) :
+  `defineSimulation`, état mutable à tick fixe, commandes validées (`validate` pur) puis journalisées, commandes
+  système programmées en ticks, systèmes ordonnés (`every`), canaux de snapshot publiés quand ils changent, échec
+  franc (`corrupted`), profilage sans allocation.
+- Cadenceur à pas fixe (`createRunner`) avec vitesse, pause, pas à pas et signalement du retard ; protocole Worker
+  validé par zod des deux côtés (`exposeSimulation`, `connectSimulation`, `localPort`).
+- Sauvegarde binaire versionnée GCSIM (fichiers revalidés, migrations en chaîne), compaction du journal, rejeu, et
+  outils de test : `expectDeterministic`, `benchmark`, fausses horloges.
+- Exemple « Renards et lapins » (`examples/sim-playground`) : simulation dans un Web Worker, canvas, sauvegarde,
+  chargement et rejeu à hash égal ; E2E Playwright. Voir [simulation.md](simulation.md).
+
 ## 🔜 Prochaines itérations
+
+### Hébergement d'une simulation dans une `Room` (mode multijoueur)
+
+- Adaptateur qui fait tourner une simulation `@gamecore/sim` dans une `Room` de `@gamecore/server` : les commandes
+  deviennent des actions validées (droits par membre, limites de débit), les canaux une synchronisation
+  différentielle vers l'écran et les téléphones, le cadenceur est piloté par le serveur.
+- Vues par destinataire pour les canaux (ce que voit chaque joueur), reprise de session, sauvegarde du salon.
 
 ### PartyKit (Cloudflare)
 
@@ -72,5 +92,6 @@ Chaque itération se termine par des commits au format Conventional Commits, pou
 ### Outillage
 
 - Publication des paquets (registre et portée npm à choisir) et modèle `create-gamecore` pour démarrer un jeu.
-- Messages d'état différentiels (patchs JSON) si un jeu a un état volumineux.
+- Messages d'état différentiels (patchs JSON) si un jeu `defineGame` a un état volumineux (les jeux qui avancent seuls
+  utilisent `@gamecore/sim`).
 - Allègement du bundle navigateur (zod mini côté client).

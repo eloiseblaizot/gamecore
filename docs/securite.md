@@ -70,7 +70,17 @@ secrètes (réponses, paquets) ne sont importées côté navigateur qu'en `impor
   `Permissions-Policy`, `Cross-Origin-Opener-Policy`, anti-traversée de répertoire, méthodes limitées à GET/HEAD,
   pas de _source maps_ publiques.
 
-### 6. Chaîne d'approvisionnement
+### 6. Simulation (`@gamecore/sim`)
+
+- Les messages entre la page et le Worker sont validés par zod **des deux côtés** (types, tailles, bornes), et les
+  commandes par le schéma de la simulation ; une commande système envoyée par la page est refusée (`FORBIDDEN`), la
+  file de commandes est bornée (`RATE_LIMITED`).
+- Une **sauvegarde chargée est une donnée non fiable** : taille bornée, en-tête, JSON, journal et commandes
+  programmées revalidés, cohérence des ticks, données en trop refusées, hash de l'état rechargé comparé à celui du
+  fichier ; le `codec` de chaque simulation revalide l'état qu'il décode. Aucune évaluation de code.
+- Le build de l'exemple ajoute une CSP stricte (`script-src 'self'`, `worker-src 'self'`, `connect-src 'self'`).
+
+### 7. Chaîne d'approvisionnement
 
 - pnpm : aucun script d'installation exécuté sans accord explicite (`allowBuilds`).
 - `pnpm audit` en CI (échec sur gravité haute ou critique), Dependabot hebdomadaire, analyse CodeQL.
@@ -88,6 +98,9 @@ secrètes (réponses, paquets) ne sont importées côté navigateur qu'en `impor
 | Origine refusée (Socket.io réel)                                               | `packages/server/src/socket-io.test.ts` |
 | Aucun secret dans les trames reçues par un joueur, ni dans le JavaScript servi | `e2e/security.spec.ts`                  |
 | En-têtes, traversée de répertoire, origine, pseudo HTML                        | `e2e/security.spec.ts`                  |
+| Protocole Worker (schémas, corrélation), commande système refusée              | `packages/sim/src/worker.test.ts`       |
+| Sauvegardes falsifiées, tronquées, altérées, d'une autre simulation            | `packages/sim/src/save.test.ts`         |
+| Fichier quelconque refusé au chargement, CSP de l'exemple de simulation        | `e2e/sim-playground.spec.ts`            |
 
 ## Limites connues
 

@@ -7,6 +7,9 @@ il sert de base commune à tous les prochains jeux.
 
 > Un jeu = quelques fonctions pures (`defineGame`). Le moteur s'occupe du reste : salons, reconnexions, secrets,
 > minuteurs, sécurité, synchronisation des écrans et des téléphones.
+>
+> Un jeu qui vit tout seul (écosystème, ville, gestion) ? Le second moteur, `@gamecore/sim`, le fait tourner à tick
+> fixe sur un gros état mutable, dans un Web Worker, de façon déterministe : voir [Simulation](docs/simulation.md).
 
 ```ts
 import { defineGame } from "@gamecore/core";
@@ -48,8 +51,11 @@ export const pileOuFace = defineGame({
 | Transport Socket.io (serveur Node)                                                                | `@gamecore/server/socket-io`, `@gamecore/client/socket-io` | ✅   |
 | Transport local (mode démo, tests)                                                                | `@gamecore/client/local`                                   | ✅   |
 | Transport PartyKit (Cloudflare)                                                                   | —                                                          | 🔜   |
-| Connexion Discord (OAuth2 PKCE) + Discord Activity                                                | `@gamecore/discord`                                        | ✅   |
-| Bots, son synthétisé, vidéo LiveKit (repris de DCDS)                                              | —                                                          | 🔜   |
+| Connexion Discord (OAuth2 PKCE), Discord Activity, Rich Presence                                  | `@gamecore/discord`                                        | ✅   |
+| Bots gérés par le serveur, mode démo dans la page                                                 | `@gamecore/server` + `@gamecore/client`                    | ✅   |
+| Son synthétisé (bruitages, musique, réglages)                                                     | `@gamecore/audio`                                          | ✅   |
+| Vidéo et audio en direct (LiveKit)                                                                | `@gamecore/livekit`                                        | ✅   |
+| Simulation continue (tick fixe, Worker, sauvegarde, rejeu déterministe)                           | `@gamecore/sim`                                            | ✅   |
 
 Détail et prochaines étapes : [feuille de route](docs/feuille-de-route.md).
 
@@ -64,23 +70,30 @@ pnpm dev:buzzer        # jeu d'exemple : http://localhost:5173
 Clique sur « Créer une partie » (c'est l'écran de l'hôte), puis ouvre le lien du QR code dans un autre onglet ou sur
 ton téléphone : tu as une manette. Voir [examples/buzzer](examples/buzzer/README.md).
 
+```bash
+pnpm dev:sim-playground   # simulation « Renards et lapins » dans un Web Worker : http://localhost:5173
+```
+
+Voir [examples/sim-playground](examples/sim-playground/README.md).
+
 ## Documentation
 
-|                                                 |                                                                |
-| ----------------------------------------------- | -------------------------------------------------------------- |
-| 🎮 [Créer un jeu](docs/creer-un-jeu.md)         | Le guide pas à pas : règles, vues, serveur, interface, tests   |
-| 🧱 [Architecture](docs/architecture.md)         | Paquets, cycle de vie d'un salon, flux d'un message            |
-| 🧩 [Modules](docs/modules.md)                   | Écran de l'hôte, manettes, chat, transports… et écrire le sien |
-| 🔌 [Protocole](docs/protocole.md)               | Messages échangés, codes d'erreur, limites                     |
-| 🔊 [Son](docs/audio.md)                         | Son synthétisé : bruitages, musique, réglages                  |
-| 🎥 [Vidéo (LiveKit)](docs/livekit.md)           | Webcams et micros des joueurs                                  |
-| 🎧 [Discord](docs/discord.md)                   | Connexion Discord et Discord Activity                          |
-| 🔒 [Sécurité](docs/securite.md)                 | Modèle de menace, garde-fous, limites connues                  |
-| 🧪 [Tests](docs/tests.md)                       | Unitaires, intégration, bout en bout, couverture               |
-| 🚀 [Déploiement](docs/deploiement.md)           | Mettre un jeu en ligne (Node, proxy, HTTPS)                    |
-| 🗺️ [Feuille de route](docs/feuille-de-route.md) | Ce qui arrive ensuite                                          |
-| 📐 [Décisions d'architecture](docs/adr/)        | Pourquoi le moteur est construit ainsi                         |
-| 🤝 [Contribuer](CONTRIBUTING.md)                | Conventions de code et de commit                               |
+|                                                 |                                                                 |
+| ----------------------------------------------- | --------------------------------------------------------------- |
+| 🎮 [Créer un jeu](docs/creer-un-jeu.md)         | Le guide pas à pas : règles, vues, serveur, interface, tests    |
+| 🌱 [Simulation](docs/simulation.md)             | Moteur de simulation continue : tick, Worker, sauvegarde, rejeu |
+| 🧱 [Architecture](docs/architecture.md)         | Paquets, cycle de vie d'un salon, flux d'un message             |
+| 🧩 [Modules](docs/modules.md)                   | Écran de l'hôte, manettes, chat, transports… et écrire le sien  |
+| 🔌 [Protocole](docs/protocole.md)               | Messages échangés, codes d'erreur, limites                      |
+| 🔊 [Son](docs/audio.md)                         | Son synthétisé : bruitages, musique, réglages                   |
+| 🎥 [Vidéo (LiveKit)](docs/livekit.md)           | Webcams et micros des joueurs                                   |
+| 🎧 [Discord](docs/discord.md)                   | Connexion Discord et Discord Activity                           |
+| 🔒 [Sécurité](docs/securite.md)                 | Modèle de menace, garde-fous, limites connues                   |
+| 🧪 [Tests](docs/tests.md)                       | Unitaires, intégration, bout en bout, couverture                |
+| 🚀 [Déploiement](docs/deploiement.md)           | Mettre un jeu en ligne (Node, proxy, HTTPS)                     |
+| 🗺️ [Feuille de route](docs/feuille-de-route.md) | Ce qui arrive ensuite                                           |
+| 📐 [Décisions d'architecture](docs/adr/)        | Pourquoi le moteur est construit ainsi                          |
+| 🤝 [Contribuer](CONTRIBUTING.md)                | Conventions de code et de commit                                |
 
 ## Scripts
 
@@ -105,8 +118,10 @@ packages/
   audio/     Son synthétisé (Web Audio) : instruments, bruitages, musique, réglages
   livekit/   Vidéo et audio en direct (LiveKit) : jetons, webcams, détection de parole
   discord/   Connexion Discord (OAuth2 PKCE), vérification d'identité, Discord Activity
+  sim/       Simulation continue : tick fixe, état mutable, canaux, Worker, sauvegarde, rejeu déterministe
 examples/
   buzzer/    Quiz « écran de l'hôte + téléphones », exemple complet
+  sim-playground/  « Renards et lapins » : simulation dans un Web Worker, sauvegarde et rejeu
 e2e/         Tests de bout en bout Playwright
 docs/        Documentation (français)
 ```
