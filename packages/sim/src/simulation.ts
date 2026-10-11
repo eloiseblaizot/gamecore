@@ -25,6 +25,7 @@ import type {
   ValidateContext,
 } from "./definition.js";
 import { hashState } from "./hash.js";
+import { readSave, writeSave, type DecodeSaveOptions, type SimSave, type SimSaveInput } from "./save.js";
 
 export interface SimOptions<Settings = unknown> {
   /** Graine du hasard (aléatoire par défaut). Même graine + même journal = même partie. */
@@ -33,6 +34,11 @@ export interface SimOptions<Settings = unknown> {
   settings?: Partial<Settings>;
   /** Ne garder dans le journal que les commandes des `journalRetention` derniers ticks. */
   journalRetention?: number;
+  /**
+   * Au-delà de ce nombre d'entrées (100 000 par défaut), le journal est compacté : une
+   * sauvegarde de base (`journalBase`) est prise au tick courant et le journal repart de zéro.
+   */
+  maxJournalEntries?: number;
   /** Commandes en attente max avant refus (10 000 par défaut). */
   maxQueuedCommands?: number;
   /** Événements gardés entre deux `drain` (10 000 par défaut ; au-delà, les plus anciens tombent). */
@@ -124,6 +130,11 @@ export interface Sim<D extends AnySimulation = AnySimulation> {
    * alors rejouable depuis la graine).
    */
   readonly journalFrom: number;
+  /**
+   * Sauvegarde prise lors de la dernière compaction du journal (`null` s'il n'y en a pas eu) :
+   * point de départ du rejeu du journal courant.
+   */
+  readonly journalBase: Uint8Array | null;
   /** `null`, ou la cause de la corruption (la simulation est alors en lecture seule). */
   readonly corrupted: CorruptionInfo | null;
   /** Met une commande en file (appliquée au début du prochain tick). */
@@ -136,6 +147,8 @@ export interface Sim<D extends AnySimulation = AnySimulation> {
   drain(): DrainPayload;
   /** Hash de la simulation : tick, RNG, état, commandes programmées. */
   hash(): string;
+  /** Sauvegarde binaire (format GCSIM) : état, RNG, réglages, graine, journal, commandes programmées. */
+  save(): Uint8Array;
   /** Temps mesurés (copie). */
   profile(): SimProfile;
   /** Commandes système programmées, dans l'ordre d'exécution à échéance égale (copie). */
@@ -185,6 +198,7 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
   state!: SimTypes<D>["state"];
   journal: JournalEntry<SimTypes<D>["command"]>[] = [];
   journalFrom = 0;
+  journalBase: Uint8Array | null = null;
   corrupted: CorruptionInfo | null = null;
 
   /** Ticks terminés. */
@@ -194,6 +208,7 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
   protected seq = 0;
   protected readonly rng: Rng;
   private readonly retention: number | null;
+  private readonly maxJournal: number;
   private readonly maxQueued: number;
   private readonly maxEvents: number;
   private readonly profiling: boolean;
@@ -244,6 +259,10 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
     this.retention = options.journalRetention ?? null;
     if (this.retention !== null && !(Number.isInteger(this.retention) && this.retention >= 1)) {
       throw new RangeError("journalRetention : entier ≥ 1 attendu.");
+    }
+    this.maxJournal = options.maxJournalEntries ?? 100_000;
+    if (!(Number.isInteger(this.maxJournal) && this.maxJournal >= 1)) {
+      throw new RangeError("maxJournalEntries : entier ≥ 1 attendu.");
     }
     this.maxQueued = options.maxQueuedCommands ?? 10_000;
     this.maxEvents = options.maxBufferedEvents ?? 10_000;
@@ -297,6 +316,23 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
     return this;
   }
 
+  /** Reprend l'état d'une sauvegarde déjà validée (le RNG est restauré par le constructeur). */
+  restore(save: SimSave<D>): this {
+    this.state = save.state;
+    this.ticks = save.tick;
+    this.current = save.tick;
+    this.seq = save.seq;
+    for (const s of save.scheduled) {
+      this.schedKeys.push(s.key);
+      this.schedDue.push(s.due);
+      this.schedCommands.push(s.command);
+      if (s.due < this.minDue) this.minDue = s.due;
+    }
+    this.journal = save.journal.slice();
+    this.journalFrom = save.journalFrom;
+    return this;
+  }
+
   // --- Lecture ------------------------------------------------------------------------
 
   get tick(): number {
@@ -326,6 +362,27 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
       this.schedDue,
       this.schedCommands,
     ]);
+  }
+
+  save(): Uint8Array {
+    if (this.corrupted) throw new GameError("INTERNAL", "Simulation corrompue : sauvegarde refusée.");
+    return writeSave(this.definition, this.saveInput());
+  }
+
+  private saveInput(): SimSaveInput<D> {
+    return {
+      id: this.definition.id,
+      tick: this.ticks,
+      rng: this.rng.state(),
+      settings: this.settings,
+      seed: this.seed,
+      seq: this.seq,
+      journalFrom: this.journalFrom,
+      journal: this.journal,
+      scheduled: this.scheduled(),
+      hash: this.hash(),
+      state: this.state,
+    };
   }
 
   profile(): SimProfile {
@@ -421,6 +478,7 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
 
     this.ticks = t;
     if (this.retention !== null) this.trimJournal(t, this.retention);
+    if (this.journal.length > this.maxJournal) this.compactJournal(t);
     if (profiling) {
       const elapsed = this.clock() - tickStart;
       this.tickTimes[0] = elapsed;
@@ -578,6 +636,13 @@ export class SimImpl<D extends AnySimulation> implements Sim<D> {
     this.journalFrom = oldest + 1;
   }
 
+  /** Compaction : sauvegarde de base au tick `t` (journal vide), puis journal repris à zéro. */
+  private compactJournal(t: number): void {
+    this.journal = [];
+    this.journalFrom = t + 1;
+    this.journalBase = this.save();
+  }
+
   // --- Snapshots ------------------------------------------------------------------------
 
   snapshot(): SimSnapshot<SimTypes<D>["full"]> {
@@ -616,4 +681,44 @@ export function createSimulation<D extends AnySimulation>(
   const settings = resolveSimSettings(definition, options.settings);
   const seed = options.seed ?? randomSeed();
   return new SimImpl(definition, settings, seed, createRng(seed), options).init();
+}
+
+export interface LoadOptions<Settings = unknown>
+  extends Omit<SimOptions<Settings>, "seed" | "settings">, DecodeSaveOptions {
+  /**
+   * Vérifier que l'état rechargé a le même hash qu'à la sauvegarde (oui par défaut ; sans
+   * objet après une migration). Détecte un fichier altéré ou un `codec` infidèle.
+   */
+  verifyHash?: boolean;
+}
+
+/** Lit et revalide une sauvegarde (sans créer de simulation). */
+export function decodeSave<D extends AnySimulation>(
+  definition: D,
+  bytes: Uint8Array,
+  options: DecodeSaveOptions = {},
+): SimSave<D> {
+  return readSave(definition, bytes, (settings) => resolveSimSettings(definition, settings), options);
+}
+
+/** Sauvegarde une simulation (équivaut à `sim.save()`). */
+export function encodeSave(sim: Sim): Uint8Array {
+  return sim.save();
+}
+
+/** Recrée une simulation à partir d'une sauvegarde (migrée si besoin). */
+export function loadSimulation<D extends AnySimulation>(
+  definition: D,
+  bytes: Uint8Array,
+  options: LoadOptions<SimTypes<D>["settings"]> = {},
+): Sim<D> {
+  const save = decodeSave(definition, bytes, options);
+  const sim = new SimImpl(definition, save.settings, save.seed, createRng(save.rng), options).restore(save);
+  if (options.verifyHash !== false && save.savedVersion === definition.version && sim.hash() !== save.hash) {
+    throw new GameError(
+      "BAD_REQUEST",
+      "Sauvegarde altérée, ou codec qui ne restitue pas l'état à l'identique.",
+    );
+  }
+  return sim;
 }

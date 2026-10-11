@@ -179,8 +179,14 @@ export class ByteReader {
     return this.bytes.slice(at, at + length);
   }
 
+  /** Chaîne UTF-8 (une séquence invalide lève une `RangeError`, comme une lecture tronquée). */
   string(): string {
-    return decoder.decode(this.bytesValue());
+    const bytes = this.bytesValue();
+    try {
+      return decoder.decode(bytes);
+    } catch {
+      throw new RangeError("Données binaires tronquées ou invalides.");
+    }
   }
 
   private typedBytes(bytesPerElement: number): ArrayBuffer {

@@ -64,6 +64,6 @@ describe("ByteWriter / ByteReader", () => {
   it("refuse une chaîne UTF-8 invalide", () => {
     const w = new ByteWriter();
     w.bytes(new Uint8Array([0xff, 0xfe]));
-    expect(() => new ByteReader(w.finish()).string()).toThrow();
+    expect(() => new ByteReader(w.finish()).string()).toThrow(RangeError);
   });
 });
