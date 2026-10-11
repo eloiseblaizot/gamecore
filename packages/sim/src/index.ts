@@ -23,6 +23,7 @@ export {
   type ValidateContext,
 } from "./definition.js";
 export { fnv1a64, hashState } from "./hash.js";
+export { createRunner, type Runner, type RunnerOptions, type RunnerStats } from "./runner.js";
 export {
   createSimulation,
   type CommandRejection,
