@@ -6,8 +6,9 @@
     "customConditions": ["source"],
     // Le runtime n'utilise que des API standard (Web Crypto, TextEncoder, structuredClone)
     // pour tourner aussi bien sous Node que sous Cloudflare Workers (PartyKit).
-    "lib": ["ES2023", "DOM"],
-    "types": ["node"]
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
   "include": ["src"]
 }

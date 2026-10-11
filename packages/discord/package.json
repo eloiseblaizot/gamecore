@@ -1,7 +1,7 @@
 {
   "name": "@gamecore/discord",
   "version": "0.1.0",
-  "description": "Intégration Discord de gamecore : connexion OAuth2 (PKCE), vérification d'identité côté serveur, Discord Activity.",
+  "description": "Intégration Discord de gamecore : connexion OAuth2 (PKCE), vérification d'identité côté serveur, Discord Activity, Rich Presence.",
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -20,6 +20,11 @@
       "source": "./src/client.ts",
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"
+    },
+    "./react": {
+      "source": "./src/react.tsx",
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
     }
   },
   "files": [
@@ -39,7 +44,19 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^24.19.1",
-    "happy-dom": "^20.14.5"
+    "@types/react": "^19.3.0",
+    "happy-dom": "^20.14.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

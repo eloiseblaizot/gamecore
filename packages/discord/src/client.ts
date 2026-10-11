@@ -14,7 +14,11 @@
  *   salon gamecore dérivé de l'instance : tout le salon vocal joue ensemble, sans code.
  */
 
+import type { DiscordActivityPayload } from "./presence.js";
 import { activityRoomCode, DISCORD_AUTHORIZE_URL, type DiscordUser } from "./shared.js";
+
+/** Portées OAuth utiles à une Activity : identité, serveurs, Rich Presence. */
+export type ActivityScope = "identify" | "guilds" | "rpc.activities.write";
 
 // --- PKCE ---------------------------------------------------------------------------
 
@@ -204,11 +208,15 @@ export interface DiscordSdkLike {
       response_type: "code";
       state: string;
       prompt: "none";
-      scope: ("identify" | "guilds")[];
+      scope: ActivityScope[];
       code_challenge?: string;
       code_challenge_method?: "S256";
     }): Promise<{ code: string }>;
     authenticate(args: { access_token: string }): Promise<{ user: DiscordUser }>;
+    /** Rich Presence (portée `rpc.activities.write`). */
+    setActivity(args: { activity: DiscordActivityPayload | null }): Promise<unknown>;
+    /** Fenêtre d'invitation de Discord (indisponible en message privé). */
+    openInviteDialog(): Promise<unknown>;
   };
 }
 
@@ -238,7 +246,8 @@ export function isDiscordActivity(search: string = globalThis.location?.search ?
 export async function startDiscordActivity(options: {
   clientId: string;
   tokenEndpoint?: string;
-  scope?: ("identify" | "guilds")[];
+  /** Portées demandées (identité et Rich Presence par défaut). */
+  scope?: ActivityScope[];
   /** Fabrique du SDK (tests) ; par défaut le vrai SDK, chargé à la demande. */
   createSdk?: (clientId: string) => Promise<DiscordSdkLike>;
   fetch?: typeof globalThis.fetch;
@@ -258,7 +267,7 @@ export async function startDiscordActivity(options: {
     response_type: "code",
     state: "",
     prompt: "none",
-    scope: options.scope ?? ["identify"],
+    scope: options.scope ?? ["identify", "rpc.activities.write"],
     code_challenge: challenge,
     code_challenge_method: "S256",
   });
@@ -275,4 +284,17 @@ export async function startDiscordActivity(options: {
     instanceId: sdk.instanceId,
     roomCode: await activityRoomCode(sdk.instanceId),
   };
+}
+
+/**
+ * Ouvre la fenêtre d'invitation de Discord pour faire venir des amis dans l'Activity.
+ * Renvoie `false` si Discord la refuse (message privé, droit d'inviter manquant…).
+ */
+export async function inviteToActivity(session: Pick<DiscordActivitySession, "sdk">): Promise<boolean> {
+  try {
+    await session.sdk.commands.openInviteDialog();
+    return true;
+  } catch {
+    return false;
+  }
 }

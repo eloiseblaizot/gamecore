@@ -186,7 +186,12 @@ describe("Discord Activity", () => {
     const sdk: DiscordSdkLike = {
       instanceId: "i-123-gc-456-789",
       ready: vi.fn(async () => undefined),
-      commands: { authorize, authenticate },
+      commands: {
+        authorize,
+        authenticate,
+        setActivity: vi.fn(async () => null),
+        openInviteDialog: vi.fn(async () => null),
+      },
     };
     const fetch = okToken();
     const session = await startDiscordActivity({ clientId: "123", createSdk: async () => sdk, fetch });
@@ -199,7 +204,11 @@ describe("Discord Activity", () => {
     });
     expect(sdk.ready).toHaveBeenCalled();
     expect(authorize).toHaveBeenCalledWith(
-      expect.objectContaining({ client_id: "123", scope: ["identify"], code_challenge_method: "S256" }),
+      expect.objectContaining({
+        client_id: "123",
+        scope: ["identify", "rpc.activities.write"],
+        code_challenge_method: "S256",
+      }),
     );
     expect(authenticate).toHaveBeenCalledWith({ access_token: "tok_1234567890abcdef" });
     const [endpoint, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
