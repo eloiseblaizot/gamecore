@@ -41,7 +41,7 @@
     "@discord/embedded-app-sdk": "^2.5.0",
     "@gamecore/core": "workspace:*",
     "@gamecore/server": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
