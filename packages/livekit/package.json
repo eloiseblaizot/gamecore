@@ -44,9 +44,9 @@
   "devDependencies": {
     "@gamecore/client": "workspace:*",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^24.19.1",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^20.14.6",
     "jose": "^6.2.12",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
